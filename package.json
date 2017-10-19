@@ -1,0 +1,66 @@
+{
+  "name": "lisa.conference",
+  "displayName": "Conference",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A sample Apache Cordova application that responds to the deviceready event.",
+  "author": "Apache Cordova Team",
+  "license": "Apache-2.0",
+  "homepage": ".",
+  "dependencies": {
+    "cordova-android": "^6.3.0",
+    "cordova-plugin-actionsheet": "^2.3.3",
+    "cordova-plugin-camera": "^2.4.1",
+    "cordova-plugin-compat": "^1.2.0",
+    "cordova-plugin-contacts": "^2.3.1",
+    "cordova-plugin-device": "^1.1.6",
+    "cordova-plugin-network-information": "^1.3.3",
+    "cordova-plugin-whitelist": "^1.3.2",
+    "cordova-plugin-x-socialsharing": "^5.2.1",
+    "cordova-sqlite-storage": "^2.0.4",
+    "es6-promise-plugin": "^4.1.0",
+    "marked": "^0.3.6",
+    "material-ui": "^1.0.0-beta.16",
+    "material-ui-icons": "^1.0.0-beta.15",
+    "normalize.css": "^7.0.0",
+    "normalizr": "^3.2.4",
+    "react": "^16.0.0",
+    "react-dom": "^16.0.0",
+    "react-router": "^4.2.0",
+    "react-router-dom": "^4.2.2",
+    "react-scripts": "1.0.14",
+    "recompose": "^0.26.0",
+    "typeface-roboto": "0.0.35"
+  },
+  "devDependencies": {
+    "eslint-plugin-flowtype": "^2.39.1",
+    "eslint-plugin-import": "^2.7.0",
+    "eslint-plugin-jsx-a11y": "^5.1.1",
+    "eslint-plugin-react": "^7.4.0"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "clean:www": "echo 'Cleaning www folder...' && rm -rf www/*",
+    "deploy:init": "npm run clean:www && echo 'Copying build files' && cp -r build/* www/",
+    "deploy:emulator": "npm run deploy:init && cordova emulate android",
+    "deploy:android": "npm run deploy:init && cordova run android",
+    "test": "react-scripts test --env=jsdom",
+    "eject": "react-scripts eject"
+  },
+  "cordova": {
+    "plugins": {
+      "cordova-plugin-whitelist": {},
+      "cordova-plugin-device": {},
+      "cordova-plugin-network-information": {},
+      "cordova-sqlite-storage": {},
+      "cordova-plugin-camera": {},
+      "cordova-plugin-contacts": {},
+      "cordova-plugin-x-socialsharing": {},
+      "cordova-plugin-actionsheet": {}
+    },
+    "platforms": [
+      "android"
+    ]
+  }
+}
