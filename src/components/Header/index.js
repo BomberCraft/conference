@@ -36,7 +36,7 @@ class Header extends React.Component {
     this.setState({open: false});
   };
 
-  navigate (path) {
+  navigate(path) {
     this.props.history.push(path);
     this.closeMenu();
   }
@@ -47,87 +47,100 @@ class Header extends React.Component {
     history.length > 2 ? history.goBack() : this.navigate(path);
   }
 
-  render () {
+  renderTitle() {
     const {classes} = this.props;
 
     return (
+      <Switch>
+        <Route path='/sessions/:id' render={() => (
+          <div className={classes.title}>
+            <IconButton
+              color="contrast"
+              onClick={() => this.navigateBack('/sessions')}>
+              <ArrowBack />
+            </IconButton>
+            <Typography
+              type="title"
+              color="inherit">
+              Session
+            </Typography>
+          </div>
+        )}/>
+        <Route path='/speakers/:id' render={props => (
+          <div className={classes.title}>
+            <IconButton
+              color="contrast"
+              onClick={() => this.navigateBack('/speakers')}>
+              <ArrowBack/>
+            </IconButton>
+            <Typography
+              type="title"
+              color="inherit">
+              Présentateur
+            </Typography>
+          </div>
+        )}/>
+        {window.cordova && <Route path='/device' render={props => (
+          <div className={classes.title}>
+            <IconButton
+              color="contrast"
+              onClick={() => this.navigateBack('/device')}>
+              <ArrowBack/>
+            </IconButton>
+            <Typography
+              type="title"
+              color="inherit">
+              Téléphone
+            </Typography>
+          </div>
+        )}/>}
+        <Route render={() => (
+          <div className={classes.title}>
+            <IconButton
+              color="contrast"
+              onClick={() => this.navigate('/')}>
+              <Home/>
+            </IconButton>
+            <Typography
+              type="title"
+              color="inherit"
+              className={classes.title}
+              onClick={() => this.navigate('/')}>
+              Conférence
+            </Typography>
+          </div>
+        )}/>
+      </Switch>
+    );
+  }
+
+  renderMenu() {
+    return (
+      <div>
+        <IconButton
+          color="contrast"
+          onClick={this.openMenu}>
+          <MenuIcon />
+        </IconButton>
+        <Menu
+          anchorEl={this.state.anchorEl}
+          open={this.state.open}
+          onRequestClose={this.closeMenu}
+        >
+          <MenuItem onClick={() => this.navigate('/sessions')}>Sessions</MenuItem>
+          <MenuItem onClick={() => this.navigate('/speakers')}>Présentateurs</MenuItem>
+          {window.cordova && <MenuItem onClick={() => this.navigate('/device')}>Téléphone</MenuItem>}
+        </Menu>
+      </div>
+    )
+  }
+
+  render () {
+    return (
       <AppBar position="static">
         <Toolbar>
-          <Switch>
-            <Route path='/sessions/:id' render={() => (
-              <div className={classes.title}>
-                <IconButton
-                  color="contrast"
-                  onClick={() => this.navigateBack('/sessions')}>
-                  <ArrowBack />
-                </IconButton>
-                <Typography
-                  type="title"
-                  color="inherit">
-                  Session
-                </Typography>
-              </div>
-            )}/>
-            <Route path='/speakers/:id' render={props => (
-              <div className={classes.title}>
-                <IconButton
-                  color="contrast"
-                  onClick={() => this.navigateBack('/speakers')}>
-                  <ArrowBack/>
-                </IconButton>
-                <Typography
-                  type="title"
-                  color="inherit">
-                  Présentateur
-                </Typography>
-              </div>
-            )}/>
-            {window.cordova && <Route path='/device' render={props => (
-              <div className={classes.title}>
-                <IconButton
-                    color="contrast"
-                    onClick={() => this.navigateBack('/device')}>
-                  <ArrowBack/>
-                </IconButton>
-                <Typography
-                    type="title"
-                    color="inherit">
-                  Téléphone
-                </Typography>
-              </div>
-            )}/>}
-            <Route render={() => (
-              <div className={classes.title}>
-                <IconButton
-                  color="contrast"
-                  onClick={() => this.navigate('/')}>
-                  <Home/>
-                </IconButton>
-                <Typography
-                  type="title"
-                  color="inherit"
-                  className={classes.title}
-                  onClick={() =>this.navigate('/')}>
-                  Conférence
-                </Typography>
-              </div>
-            )}/>
-          </Switch>
-          <IconButton
-            color="contrast"
-            onClick={this.openMenu}>
-            <MenuIcon />
-          </IconButton>
-          <Menu
-            id="simple-menu"
-            anchorEl={this.state.anchorEl}
-            open={this.state.open}
-            onRequestClose={this.closeMenu}
-          >
-            <MenuItem onClick={() => this.navigate('/sessions')}>Sessions</MenuItem>
-            <MenuItem onClick={() => this.navigate('/speakers')}>Présentateurs</MenuItem>
-            {window.cordova && <MenuItem onClick={() => this.navigate('/device')}>Téléphone</MenuItem>}
-          </Menu>
+          {this.renderTitle()}
+          {this.renderMenu()}
         </Toolbar>
       </AppBar>
     )
