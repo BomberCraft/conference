@@ -1,9 +1,23 @@
 import React from 'react';
 import {withRouter} from 'react-router';
+import {compose} from 'recompose';
+import CircularProgress from 'material-ui/Progress/CircularProgress';
+import {withStyles} from 'material-ui/styles';
 import PropTypes from 'prop-types';
 import fetchData from '../../fetchData';
 import Header from '../Header';
 import Main from '../Main';
+
+const styles = theme => ({
+  progressContainer: {
+    position: 'absolute',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent:'center',
+    width: '100%',
+    height: '100%',
+  },
+});
 
 export class App extends React.Component {
   static childContextTypes = {
@@ -15,23 +29,24 @@ export class App extends React.Component {
   }
 
   state = {
-    isLoading: false,
+    isLoading: true,
     error: null,
     entities: null,
   };
 
   componentWillMount() {
-    this.setState({isLoading: true});
-
     fetchData()
       .then(entities => {
-        this.setState({entities, isLoading: false});
-        this.props.history.replace('/');
+        setTimeout(() => {
+          this.setState({entities, isLoading: false});
+          this.props.history.replace('/');
+        }, 800);
       })
       .catch(error => this.setState({error, isLoading: false}));
   }
 
   render() {
+    const {classes} = this.props;
     const {isLoading, error} = this.state;
 
     if (error) {
@@ -39,7 +54,11 @@ export class App extends React.Component {
     }
 
     if (isLoading) {
-      return <p>Chargement des données...</p>;
+      return (
+        <div className={classes.progressContainer}>
+          <CircularProgress size={50} />
+        </div>
+      );
     }
 
     return (
@@ -51,4 +70,9 @@ export class App extends React.Component {
   }
 }
 
-export default withRouter(App);
+const composed = compose(
+  withRouter,
+  withStyles(styles),
+);
+
+export default composed(App);
