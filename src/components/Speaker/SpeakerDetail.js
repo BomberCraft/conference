@@ -6,10 +6,7 @@ import Typography from 'material-ui/Typography';
 import {withStyles} from 'material-ui/styles';
 import config from '../../config';
 import SessionList from '../Session/SessionList';
-import ContactFindOptions from "cordova-plugin-contacts/www/ContactFindOptions";
-import ContactOrganization from "cordova-plugin-contacts/www/ContactOrganization";
-import ContactField from "cordova-plugin-contacts/www/ContactField";
-
+import { findContacts, createContact, removeContact } from './helpers';
 
 const styles = {
   card: {
@@ -18,7 +15,7 @@ const styles = {
   media: {
     height: 200,
   },
-  name: {
+  title: {
     display: 'flex',
     justifyContent: 'space-between',
   },
@@ -34,92 +31,51 @@ export class SpeakerDetail extends React.Component {
 
   componentWillMount() {
     if (!window.cordova) {
-      this.setState({isLoading: false});
+      this.setState({
+        isLoading: false,
+      });
+
       return;
     }
 
-    const {speaker} = this.props;
-    this.findInContacts(speaker);
+    findContacts(this.props.speaker)
+      .then(contacts => {
+        const nextState = {
+          isLoading: false,
+          isInContacts: false,
+        };
+
+        if (contacts.length !== 0) {
+          nextState.isInContacts = true;
+          nextState.contact = contacts[0];
+        }
+
+        this.setState(nextState);
+      })
+      .catch(error => this.setState({
+        error: {
+          message: error,
+        },
+      }));
   }
 
-  findInContacts(speaker) {
-    const onFindSuccess = (contacts) => {
-      const nextState = {isLoading: false, isInContacts: false};
-      console.warn('contacts', contacts);
+  manageContact = checked => {
+    if (checked) {
+      createContact(this.props.speaker)
+        .then(contact => this.setState({
+          isInContacts: true,
+          contact,
+        }));
+    } else {
+      const { contact } = this.state;
 
-      if (contacts.length !== 0) {
-        nextState.isInContacts = true;
-        nextState.contact = contacts[0];
-      }
-
-      this.setState(nextState);
-    };
-    const onFindError = (contactError) => {
-      this.setState({error: {message: contactError}})
-    };
-
-    const optionsRecherche = new ContactFindOptions();
-    optionsRecherche.filter = speaker.name;
-    optionsRecherche.multiple = false;
-    optionsRecherche.desiredFields = [
-      navigator.contacts.fieldType.id,
-      navigator.contacts.fieldType.displayName,
-    ];
-    const champsRecherche = [
-      navigator.contacts.fieldType.displayName,
-    ];
-    navigator.contacts.find(champsRecherche, onFindSuccess, onFindError, optionsRecherche);
-  }
-
-  manageContact(event, checked) {
-    checked ? this.createContact() : this.removeContact();
-  }
-
-  createContact() {
-    const {speaker} = this.props;
-
-    const socials = speaker.socials || [];
-    const urls = socials.map((social, index) => (
-      new ContactField(social.name, social.link, index === 0)
-    ));
-
-    const contact = navigator.contacts.create(
-      {
-        displayName: speaker.name,
-        nickname: speaker.name,
-        organizations: [
-          new ContactOrganization(true, null, speaker.company, null, null),
-        ],
-        note: speaker.shortBio,
-        photos: [
-          new ContactField('avatar', config.imgUrl + speaker.photoUrl, true),
-        ],
-        urls: urls,
-      }
-    );
-
-    const onSaveSuccess = (contact) => {
-      this.setState({isInContacts: true, contact: contact});
-    };
-
-    const onSaveError = (contactError) => {
-      console.error('[SaveContactException]', contactError);
-    };
-
-    contact.save(onSaveSuccess, onSaveError);
-  }
-
-  removeContact() {
-    const onRemoveSuccess = (contact) => {
-      this.setState({isInContacts: false, contact: null});
-    };
-
-    const onRemoveError = (contactError) => {
-      console.error('[RemoveContactException]', contactError);
-    };
-
-    this.state.contact && this.state.contact.remove(onRemoveSuccess, onRemoveError);
-  }
+      contact && removeContact(contact)
+        .then(() => this.setState({
+          isInContacts: false,
+          contact: null,
+        }));
+    }
+  };
 
   render() {
     const {classes, speaker} = this.props;
@@ -136,8 +92,6 @@ export class SpeakerDetail extends React.Component {
 
     const markedBio = bio && marked(bio);
 
-    console.warn('speaker', speaker);
-
     return (
       <Card className={classes.card}>
         <CardMedia
@@ -146,14 +100,15 @@ export class SpeakerDetail extends React.Component {
           title={name}
         />
         <CardContent>
-          <Typography type="headline" component="h2" className={classes.name}>
+          <Typography type="headline" component="h2" className={classes.title}>
             {name}
-            { window.cordova &&
-            <Switch
-              checked={this.state.isInContacts}
-              onChange={this.manageContact.bind(this)}
-              aria-label="isInContacts"
-            />}
+            { window.cordova && (
+              <Switch
+                checked={this.state.isInContacts}
+                onChange={(event, checked) => this.manageContact(checked)}
+                aria-label="isInContacts"
+              />
+            )}
           </Typography>
           <Typography component="div">
             <p dangerouslySetInnerHTML={{__html: markedBio}}/>
