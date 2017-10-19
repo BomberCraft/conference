@@ -16,19 +16,16 @@ const styles = theme => ({
 });
 
 export class Device extends React.Component {
-  constructor (props) {
-    super(props);
-
-    this.networkStates = {};
-    this.networkStates[Connection.UNKNOWN]  = 'Unknown';
-    this.networkStates[Connection.ETHERNET] = 'Ethernet';
-    this.networkStates[Connection.WIFI]     = 'WiFi';
-    this.networkStates[Connection.CELL_2G]  = '2G';
-    this.networkStates[Connection.CELL_3G]  = '3G';
-    this.networkStates[Connection.CELL_4G]  = '4G';
-    this.networkStates[Connection.CELL]     = 'Cellular';
-    this.networkStates[Connection.NONE]     = 'Offline';
-  }
+  static networkStates = {
+    [Connection.UNKNOWN]: 'Unknown',
+    [Connection.ETHERNET]: 'Ethernet',
+    [Connection.WIFI]: 'WiFi',
+    [Connection.CELL_2G]: '2G',
+    [Connection.CELL_3G]: '3G',
+    [Connection.CELL_4G]: '4G',
+    [Connection.CELL]: 'Cellular',
+    [Connection.NONE]: 'Offline',
+  };
 
   render () {
     const {device} = window;
@@ -58,7 +55,7 @@ export class Device extends React.Component {
               </TableRow>
               <TableRow>
                 <TableCell>Connection</TableCell>
-                <TableCell>{this.networkStates[connection.type]}</TableCell>
+                <TableCell>{Device.networkStates[connection.type]}</TableCell>
               </TableRow>
             </TableBody>
           </Table>
