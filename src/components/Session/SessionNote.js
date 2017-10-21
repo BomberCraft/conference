@@ -39,6 +39,9 @@ const styles = theme => ({
   figure: {
     margin: '0',
   },
+  contentButton: {
+    padding: 0,
+  },
   img: {
     width: '100%',
   },
@@ -289,35 +292,69 @@ export class SessionNote extends React.Component {
     }, onTransactionError);
   }
 
-  handlePhotoItem(stateKey, itemId) {
-    this.handleItem("Que faire de la photo ?",stateKey, itemId);
-  }
+  handlePhotoItem = (itemId) => {
+    this.handleItem("Que faire de la photo ?", 'photos', itemId);
+  };
 
-  handleItem(title, stateKey, itemId) {
+  handleItem = (title, stateKey, itemId) => {
     console.warn('handleItem', stateKey, itemId);
 
-    const options = {
+    const actionSheetButtons = [];
+
+    const ActionSheetButtonsIndex = {
+      share: 1,
+      delete: -1,
+      cancel: -1,
+    };
+
+    const addButton = (buttons, index, value) => {
+      buttons[index - 1] = value;
+    };
+
+    const updateIndexEnum = (indexEnum, buttons) => {
+      indexEnum.delete = buttons.length + 1;
+      indexEnum.cancel = buttons.length + 2;
+    };
+
+    addButton(actionSheetButtons, ActionSheetButtonsIndex.share, 'Partager');
+    updateIndexEnum(ActionSheetButtonsIndex, actionSheetButtons);
+
+    const actionSheetOptions = {
       androidTheme: window.plugins.actionsheet.ANDROID_THEMES.THEME_DEVICE_DEFAULT_LIGHT,
       title: title,
-      buttonLabels: [
-        'Partager',
-      ],
+      buttonLabels: actionSheetButtons,
       androidEnableCancelButton: true,
       winphoneEnableCancelButton: true,
       addCancelButtonWithLabel: 'Annuler',
       addDestructiveButtonWithLabel: 'Supprimer',
-      destructiveButtonLast: true
+      destructiveButtonLast: true,
     };
 
     const callback = (buttonIndex) => {
-      setTimeout(() => {
-        // like other Cordova plugins (prompt, confirm) the buttonIndex is 1-based (first button is index 1)
-        alert('button index clicked: ' + buttonIndex);
-      });
+      switch (buttonIndex) {
+        case ActionSheetButtonsIndex.share:
+          const item = this.state[stateKey].filter(item => item.id === itemId)[0];
+          const shareOptions = {
+            files: [`data:image/png;base64,${item.content}`],
+          };
+
+          const onShareSuccess = (result) => {
+          };
+          const onShareError = (msg) => {
+            console.error("[ShareException]", msg);
+          };
+
+          window.plugins.socialsharing.shareWithOptions(shareOptions, onShareSuccess, onShareError);
+          break;
+        case ActionSheetButtonsIndex.delete:
+          this.setState({[stateKey]: this.state[stateKey].filter(item => item.id !== itemId)});
+          break;
+        default:
+      }
     };
 
-    window.plugins.actionsheet.show(options, callback);
-  }
+    window.plugins.actionsheet.show(actionSheetOptions, callback);
+  };
 
   render() {
     const {classes, session} = this.props;
@@ -413,8 +450,10 @@ export class SessionNote extends React.Component {
                     <ListItem
                       key={photo.id}>
                       <figure className={classes.figure}>
-                        <img className={classes.img} alt={`n°${index}`} src={`data:image/png;base64,${photo.content}`}
-                             onClick={this.handlePhotoItem.bind(this, 'Photos', photo.id)}/>
+                        <Button key={photo.id} className={classes.contentButton} onContextMenu={() => this.handlePhotoItem(photo.id)}>
+                          <img className={classes.img} alt={`n°${index}`}
+                               src={`data:image/png;base64,${photo.content}`}/>
+                        </Button>
                         <figcaption>Ajoutée le {photo.createdAt}</figcaption>
                       </figure>
                     </ListItem>
