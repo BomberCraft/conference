@@ -10,6 +10,8 @@ import IconButton from "material-ui/IconButton";
 import ExpandMoreIcon from "material-ui-icons/ExpandMore";
 import AddAPhoto from "material-ui-icons/AddAPhoto";
 import Photo from "material-ui-icons/Photo";
+import Mic from "material-ui-icons/Mic";
+import Videocam from "material-ui-icons/Videocam";
 import Camera from "cordova-plugin-camera/www/CameraConstants";
 
 
@@ -56,6 +58,10 @@ export class SessionNote extends React.Component {
     isNoteExpanded: true,
     photos: [],
     isPhotosExpanded: true,
+    records: [],
+    isRecordsExpanded: true,
+    videos: [],
+    isVideosExpanded: true,
   };
 
   componentWillMount() {
@@ -65,16 +71,31 @@ export class SessionNote extends React.Component {
       return;
     }
 
-    this.loadNote();
-    this.loadPhotos();
+    const onLoadingError = () => {
+
+    };
+
+    const onLoadingDone = () => {
+      this.setState({isLoading: false});
+    };
+
+    this.loadNote()
+      .catch(onLoadingError)
+      .then(() => this.loadItems('photos', 'photo', 'notePhoto'))
+      .catch(onLoadingError)
+      .then(() => this.loadItems('records', 'record', 'noteRecord'))
+      .catch(onLoadingError)
+      .then(() => this.loadItems('videos', 'video', 'noteVideo'))
+      .catch(onLoadingError)
+      .then(onLoadingDone);
   }
 
-  loadNote() {
+  loadNote = () => new Promise((resolve, reject) => {
     const db = window.sqlitePlugin.openDatabase({name: 'conference.db', location: 'default'});
 
     const onTransactionError = (error) => {
       console.error('[TransactionException]: ', error.message);
-      this.setState({error});
+      reject();
     };
 
     db.transaction(tx => {
@@ -82,15 +103,16 @@ export class SessionNote extends React.Component {
       const parameters = [this.props.session.id];
 
       const onSqlSuccess = (tx, rs) => {
-        const nextState = {isLoading: false};
+        const nextState = {};
         if (rs.rows.length !== 0) {
           nextState.note = rs.rows.item(0).content;
+          this.setState(nextState);
         }
-        this.setState(nextState);
+        resolve();
       };
       const onSqlError = (tx, error) => {
         console.error('[SQLException] Fail to load notes:', error.message);
-        this.setState({error});
+        reject();
       };
 
       tx.executeSql(
@@ -100,41 +122,42 @@ export class SessionNote extends React.Component {
         onSqlError
       );
     }, onTransactionError);
-  }
+  });
 
-  loadPhotos() {
+  loadItems = (stateKey, dbEntity, dbJoinEntity) => new Promise((resolve, reject) => {
     const db = window.sqlitePlugin.openDatabase({name: 'conference.db', location: 'default'});
 
     const onTransactionError = (error) => {
-      console.error('[TransactionException]: ', error.message);
-      this.setState({error});
+      console.error('[TransactionException](', stateKey, '):', error.message);
+      reject();
     };
 
     db.transaction(tx => {
       const query = `
-        SELECT photo.id, photo.content, datetime(photo.createdAt, 'localtime') AS createdAt 
-        FROM photo INNER JOIN notePhoto on notePhoto.photoId = photo.id 
+        SELECT ${dbEntity}.id, ${dbEntity}.content, datetime(${dbEntity}.createdAt, 'localtime') AS createdAt 
+        FROM ${dbEntity} INNER JOIN ${dbJoinEntity} on ${dbJoinEntity}.${dbEntity}Id = ${dbEntity}.id 
         WHERE noteId = ?
       `;
       const parameters = [this.props.session.id];
 
       const onSqlSuccess = (tx, rs) => {
-        const nextState = {isLoading: false};
+        const nextState = {};
         if (rs.rows.length !== 0) {
           for (let i = 0; i < rs.rows.length; i++) {
-            const photo = rs.rows.item(i);
-            nextState.photos = [...(nextState.photos || []), {
-              id: photo.id,
-              content: photo.content,
-              createdAt: photo.createdAt
+            const item = rs.rows.item(i);
+            nextState[stateKey] = [...(nextState[stateKey] || []), {
+              id: item.id,
+              content: item.content,
+              createdAt: item.createdAt
             }];
           }
+          this.setState(nextState);
         }
-        this.setState(nextState);
+        resolve();
       };
       const onSqlError = (tx, error) => {
-        console.error('[SQLException] Fail to load notes:', error.message);
-        this.setState({error});
+        console.error(`[SQLException] Fail to load ${stateKey}:`, error.message);
+        reject();
       };
 
       tx.executeSql(
@@ -144,18 +167,18 @@ export class SessionNote extends React.Component {
         onSqlError
       );
     }, onTransactionError);
-  }
+  });
 
-  handleChanges(event) {
+  handleChanges = (event) => {
     this.setState({note: event.target.value, saveDisabled: false});
-  }
+  };
 
-  toggleMenu(menu) {
+  toggleMenu = (menu) => {
     const stateName = `is${menu}Expanded`;
     this.setState({[stateName]: !this.state[stateName]});
   };
 
-  saveNote() {
+  saveNote = () => {
     if (!window.cordova) {
       localStorage.setItem(this.props.session.id, this.state.note);
       this.setState({saveDisabled: true});
@@ -190,86 +213,90 @@ export class SessionNote extends React.Component {
         onSqlError
       );
     }, onTransactionError);
-  }
+  };
 
-  addAPhoto() {
+  addAPhoto = () => {
     this.getPicture({
       sourceType: Camera.PictureSourceType.PHOTOLIBRARY,
       mediaType: Camera.MediaType.PICTURE,
       destinationType: Camera.DestinationType.DATA_URL,
       encodingType: Camera.EncodingType.PNG,
     });
-  }
+  };
 
-  takeAPhoto() {
+  takeAPhoto = () => {
     this.getPicture({
       sourceType: Camera.PictureSourceType.CAMERA,
       destinationType: Camera.DestinationType.DATA_URL,
       encodingType: Camera.EncodingType.PNG,
     });
-  }
+  };
 
-  getPicture(cameraOptions) {
+  getPicture = (cameraOptions) => {
     const onCameraError = (message) => {
       console.error('[PictureException] Fail to add a photo:', message);
     };
 
-    navigator.camera.getPicture(this.savePhoto.bind(this), onCameraError, cameraOptions);
-  }
+    navigator.camera.getPicture((imageData) => this.saveItem('photos', 'photo', 'notePhoto', imageData), onCameraError, cameraOptions);
+  };
 
-  savePhoto(imageData) {
+  saveItem = (stateKey, dbEntity, dbJoinEntity, itemContent) => {
     const db = window.sqlitePlugin.openDatabase({name: 'conference.db', location: 'default'});
 
     const onTransactionError = (error) => {
-      console.error('[TransactionException]: ', error.message);
+      console.error('[TransactionException] (', stateKey, '):', error.message);
     };
 
     db.transaction(tx => {
-      const query = 'INSERT INTO photo (content) VALUES (?)';
-      const parameters = [imageData];
+      const query = `INSERT INTO ${dbEntity} (content) VALUES (?)`;
+      const parameters = [itemContent];
 
       const onSqlSuccess = (tx, rs) => {
         if (rs.rowsAffected === 0) {
-          console.error('[NotModifiedException] Fail to save photo:', 'no record saved');
+          console.error('[NotModifiedException] Fail to save', stateKey);
           return;
         }
 
-        const childQuery = 'INSERT INTO notePhoto (noteId, photoId) VALUES (?, ?)';
+        const childQuery = `INSERT INTO ${dbJoinEntity} (noteId, ${dbEntity}Id) VALUES (?, ?)`;
         const childParameters = [this.props.session.id, rs.insertId];
 
         const onChildSqlSuccess = (tx, childRs) => {
           if (childRs.rowsAffected === 0) {
-            console.error('[NotModifiedException] Fail to save photo:', 'no record saved');
+            console.error('[NotModifiedException] Fail to save', stateKey);
             return;
           }
 
-          const finalChildQuery = `SELECT id, content, datetime(createdAt, 'localtime') AS createdAt FROM photo WHERE id = ?`;
+          const finalChildQuery = `SELECT id, content, datetime(createdAt, 'localtime') AS createdAt FROM ${dbEntity} WHERE id = ?`;
           const finalChildParameters = [rs.insertId];
 
           const onFinalChildSqlSuccess = (tx, finalChildRs) => {
             if (finalChildRs.rows.length === 0) {
-              console.error('[NotModifiedException] Fail to select last photo');
+              console.error('[NotModifiedException] Fail to select last', stateKey);
               return;
             }
 
-            const photo = finalChildRs.rows.item(0);
-
-            const {photos} = this.state;
-            this.setState({photos: [...photos, {id: photo.id, content: photo.content, createdAt: photo.createdAt}]});
+            const item = finalChildRs.rows.item(0);
+            this.setState({
+              [stateKey]: [...this.state[stateKey], {
+                id: item.id,
+                content: item.content,
+                createdAt: item.createdAt,
+              }]
+            });
           };
-          const onChildSqlError = (tx, error) => {
-            console.error('[ChildSQLException]', error.message);
+          const onFinalChildSqlError = (tx, error) => {
+            console.error('[ChildSQLException] (', stateKey, '):', error.message);
           };
 
           tx.executeSql(
             finalChildQuery,
             finalChildParameters,
             onFinalChildSqlSuccess,
-            onChildSqlError
+            onFinalChildSqlError
           );
         };
         const onChildSqlError = (tx, error) => {
-          console.error('[ChildSQLException]', error.message);
+          console.error('[ChildSQLException] (', stateKey, '):', error.message);
         };
 
         tx.executeSql(
@@ -280,7 +307,7 @@ export class SessionNote extends React.Component {
         );
       };
       const onSqlError = (tx, error) => {
-        console.error('[SQLException]', error.message);
+        console.error('[SQLException] (', stateKey, '):', error.message);
       };
 
       tx.executeSql(
@@ -290,13 +317,60 @@ export class SessionNote extends React.Component {
         onSqlError
       );
     }, onTransactionError);
-  }
-
-  handlePhotoItem = (itemId) => {
-    this.handleItem("Que faire de la photo ?", 'photos', itemId);
   };
 
-  handleItem = (title, stateKey, itemId) => {
+  deleteItem = (stateKey, dbEntity, itemId) => {
+    const db = window.sqlitePlugin.openDatabase({name: 'conference.db', location: 'default'});
+
+    const onTransactionError = (error) => {
+      console.error('[TransactionException] (', stateKey, '):', error.message);
+    };
+
+    db.transaction(tx => {
+      const query = `DELETE FROM ${dbEntity} WHERE id = (?)`;
+      const parameters = [itemId];
+
+      const onSqlSuccess = (tx, rs) => {
+        if (rs.rowsAffected === 0) {
+          console.error('[NotModifiedException] Fail to save', stateKey);
+          return;
+        }
+        this.setState({[stateKey]: this.state[stateKey].filter(item => item.id !== itemId)});
+      };
+      const onSqlError = (tx, error) => {
+        console.error('[SQLException] (', stateKey, '):', error.message);
+      };
+
+      tx.executeSql(
+        query,
+        parameters,
+        onSqlSuccess,
+        onSqlError
+      );
+    }, onTransactionError);
+  };
+
+  captureAudio = () => {
+
+  };
+
+  captureVideo = () => {
+
+  };
+
+  handlePhotoItem = (itemId) => {
+    this.handleItem("Que faire de la photo ?", 'photos', 'photo', itemId);
+  };
+
+  handleRecordItem = (itemId) => {
+    this.handleItem("Que faire de l'enregistrement ?", 'records', 'record', itemId);
+  };
+
+  handleVideoItem = (itemId) => {
+    this.handleItem("Que faire de la video ?", 'videos', 'video', itemId);
+  };
+
+  handleItem = (title, stateKey, dbEntity, itemId) => {
     console.warn('handleItem', stateKey, itemId);
 
     const actionSheetButtons = [];
@@ -347,7 +421,7 @@ export class SessionNote extends React.Component {
           window.plugins.socialsharing.shareWithOptions(shareOptions, onShareSuccess, onShareError);
           break;
         case ActionSheetButtonsIndex.delete:
-          this.setState({[stateKey]: this.state[stateKey].filter(item => item.id !== itemId)});
+          this.deleteItem(stateKey, dbEntity, itemId);
           break;
         default:
       }
@@ -360,7 +434,7 @@ export class SessionNote extends React.Component {
     const {classes, session} = this.props;
     const {isLoading, error} = this.state;
     const {note, saveDisabled} = this.state;
-    const {photos} = this.state;
+    const {photos, records, videos} = this.state;
 
     if (error) {
       return <p>{error.message}</p>;
@@ -385,13 +459,23 @@ export class SessionNote extends React.Component {
               <CardContent>
                 <IconButton
                   color="accent"
-                  onClick={this.takeAPhoto.bind(this)}>
+                  onClick={() => this.takeAPhoto()}>
                   <AddAPhoto />
                 </IconButton>
                 <IconButton
                   color="accent"
-                  onClick={this.addAPhoto.bind(this)}>
+                  onClick={() => this.addAPhoto()}>
                   <Photo />
+                </IconButton>
+                <IconButton
+                  color="accent"
+                  onClick={() => this.captureAudio()}>
+                  <Mic />
+                </IconButton>
+                <IconButton
+                  color="accent"
+                  onClick={() => this.captureVideo()}>
+                  <Videocam />
                 </IconButton>
               </CardContent>
             </Card>
@@ -403,7 +487,7 @@ export class SessionNote extends React.Component {
               Note
               <IconButton
                 className={this.state.isNoteExpanded ? classes.expandOpen : classes.expand}
-                onClick={this.toggleMenu.bind(this, 'Note')}
+                onClick={() => this.toggleMenu('Note')}
                 aria-expanded={this.state.isNoteExpanded}
                 aria-label="Show more"
               >
@@ -417,14 +501,14 @@ export class SessionNote extends React.Component {
                 margin="normal"
                 placeholder="Saisir une note"
                 value={note}
-                onChange={this.handleChanges.bind(this)}
+                onChange={() => this.handleChanges()}
               />
               <Button
                 raised
                 disabled={saveDisabled}
                 color="accent"
                 className={classes.button}
-                onClick={this.saveNote.bind(this)}>
+                onClick={() => this.saveNote()}>
                 Sauvegarder
               </Button>
             </Collapse>
@@ -437,7 +521,7 @@ export class SessionNote extends React.Component {
                 Photos
                 <IconButton
                   className={this.state.isPhotosExpanded ? classes.expandOpen : classes.expand}
-                  onClick={this.toggleMenu.bind(this, 'Photos')}
+                  onClick={() => this.toggleMenu('Photos')}
                   aria-expanded={this.state.isPhotosExpanded}
                   aria-label="Show more"
                 >
@@ -450,11 +534,78 @@ export class SessionNote extends React.Component {
                     <ListItem
                       key={photo.id}>
                       <figure className={classes.figure}>
-                        <Button key={photo.id} className={classes.contentButton} onContextMenu={() => this.handlePhotoItem(photo.id)}>
+                        <Button key={photo.id} className={classes.contentButton}
+                                onContextMenu={() => this.handlePhotoItem(photo.id)}>
                           <img className={classes.img} alt={`n°${index}`}
                                src={`data:image/png;base64,${photo.content}`}/>
                         </Button>
                         <figcaption>Ajoutée le {photo.createdAt}</figcaption>
+                      </figure>
+                    </ListItem>
+                  ))}
+                </List>
+              </Collapse>
+            </CardContent>
+          </Card>
+        )}
+        {window.cordova && records.length > 0 && (
+          <Card className={classes.card}>
+            <CardContent>
+              <Typography type="subheading" component="h3" className={classes.cardMenu}>
+                Enregistrements
+                <IconButton
+                  className={this.state.isRecordsExpanded ? classes.expandOpen : classes.expand}
+                  onClick={() => this.toggleMenu('Records')}
+                  aria-expanded={this.state.isRecordsExpanded}
+                  aria-label="Show more"
+                >
+                  <ExpandMoreIcon />
+                </IconButton>
+              </Typography>
+              <Collapse in={this.state.isRecordsExpanded} transitionDuration="auto">
+                <List>
+                  {records.map((record, index) => (
+                    <ListItem
+                      key={record.id}>
+                      <figure className={classes.figure}>
+                        <Button key={record.id} className={classes.contentButton}
+                                onContextMenu={() => this.handleRecordItem(record.id)}>
+                          <div>{record.content}</div>
+                        </Button>
+                        <figcaption>Ajoutée le {record.createdAt}</figcaption>
+                      </figure>
+                    </ListItem>
+                  ))}
+                </List>
+              </Collapse>
+            </CardContent>
+          </Card>
+        )}
+        {window.cordova && videos.length > 0 && (
+          <Card className={classes.card}>
+            <CardContent>
+              <Typography type="subheading" component="h3" className={classes.cardMenu}>
+                Vidéos
+                <IconButton
+                  className={this.state.isVideosExpanded ? classes.expandOpen : classes.expand}
+                  onClick={() => this.toggleMenu('Videos')}
+                  aria-expanded={this.state.isVideosExpanded}
+                  aria-label="Show more"
+                >
+                  <ExpandMoreIcon />
+                </IconButton>
+              </Typography>
+              <Collapse in={this.state.isVideosExpanded} transitionDuration="auto">
+                <List>
+                  {videos.map((video, index) => (
+                    <ListItem
+                      key={video.id}>
+                      <figure className={classes.figure}>
+                        <Button key={video.id} className={classes.contentButton}
+                                onContextMenu={() => this.handleVideoItem(video.id)}>
+                          <div>{video.content}</div>
+                        </Button>
+                        <figcaption>Ajoutée le {video.createdAt}</figcaption>
                       </figure>
                     </ListItem>
                   ))}
