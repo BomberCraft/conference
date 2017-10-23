@@ -44,6 +44,7 @@ const styles = theme => ({
   },
   itemWrapper: {
     padding: 0,
+    width: '100%',
   },
   img: {
     width: '100%',
