@@ -13,7 +13,7 @@ import Photo from "material-ui-icons/Photo";
 import Mic from "material-ui-icons/Mic";
 import Videocam from "material-ui-icons/Videocam";
 import Camera from "cordova-plugin-camera/www/CameraConstants";
-import { loadNote, loadMedia, saveNote } from "./helpers";
+import {loadNote, loadMedia, saveNote} from "./helpers";
 import ItemType from "./helpers/ItemType";
 
 const styles = theme => ({
@@ -104,7 +104,7 @@ export class SessionNote extends React.Component {
   handleMediasTypeData(data) {
     const nextState = {};
 
-    data.forEach(({ itemType, resultSet }) => {
+    data.forEach(({itemType, resultSet}) => {
       if (resultSet.rows.length !== 0) {
         const {stateKey} = itemType;
 
@@ -284,12 +284,15 @@ export class SessionNote extends React.Component {
     }, onTransactionError);
   };
 
-  captureAudio = () => {
+  captureAudio = () => this.capture(ItemType.RECORD);
+
+  captureVideo = () => this.capture(ItemType.VIDEO);
+
+  capture = (itemType) => {
     const onCaptureSuccess = (mediaFiles) => {
-      var i, path, len;
-      for (i = 0, len = mediaFiles.length; i < len; i += 1) {
-        path = mediaFiles[i].fullPath;
-        this.saveItem(ItemType.RECORD, path);
+      for (let i = 0, len = mediaFiles.length; i < len; i += 1) {
+        const path = mediaFiles[i].fullPath;
+        this.saveItem(itemType, path);
       }
     };
 
@@ -297,23 +300,15 @@ export class SessionNote extends React.Component {
       console.error('[CaptureExeption]', error);
     };
 
-    navigator.device.capture.captureAudio(onCaptureSuccess, onCaptureError, {limit: 1});
-  };
-
-  captureVideo = () => {
-    const onCaptureSuccess = (mediaFiles) => {
-      var i, path, len;
-      for (i = 0, len = mediaFiles.length; i < len; i += 1) {
-        path = mediaFiles[i].fullPath;
-        this.saveItem(ItemType.VIDEO, path);
-      }
-    };
-
-    const onCaptureError = (error) => {
-      console.error('[CaptureExeption]', error);
-    };
-
-    navigator.device.capture.captureVideo(onCaptureSuccess, onCaptureError, {limit: 1});
+    switch (itemType) {
+      case ItemType.RECORD:
+        navigator.device.capture.captureAudio(onCaptureSuccess, onCaptureError, {limit: 1});
+        break;
+      case ItemType.VIDEO:
+        navigator.device.capture.captureAudio(onCaptureSuccess, onCaptureError, {limit: 1});
+        break;
+      default:
+    }
   };
 
   handlePhotoItem = (itemId) => {
@@ -331,12 +326,11 @@ export class SessionNote extends React.Component {
   handleItem = (title, itemType, itemId) => {
     const {stateKey} = itemType;
 
-    console.warn('handleItem', stateKey, itemId);
-
     const actionSheetButtons = [];
 
     const ActionSheetButtonsIndex = {
-      share: 1,
+      open: 1,
+      share: 2,
       delete: -1,
       cancel: -1,
     };
@@ -350,6 +344,7 @@ export class SessionNote extends React.Component {
       indexEnum.cancel = buttons.length + 2;
     };
 
+    addButton(actionSheetButtons, ActionSheetButtonsIndex.open, 'Ouvrir');
     addButton(actionSheetButtons, ActionSheetButtonsIndex.share, 'Partager');
     updateIndexEnum(ActionSheetButtonsIndex, actionSheetButtons);
 
@@ -365,12 +360,17 @@ export class SessionNote extends React.Component {
     };
 
     const callback = (buttonIndex) => {
+      const item = this.state[stateKey].filter(item => item.id === itemId)[0];
+      const file = (itemType === ItemType.PHOTO) ? `data:image/png;base64,${item.content}` : item.content;
+
       switch (buttonIndex) {
+        case ActionSheetButtonsIndex.open:
+          const onOpenError = code => {
+            (code === 1) && console.error('[OpenException] No file handler found');
+          };
+          window.cordova.plugins.disusered.open(file, null, onOpenError);
+          break;
         case ActionSheetButtonsIndex.share:
-          const item = this.state[stateKey].filter(item => item.id === itemId)[0];
-
-          const file = (itemType === ItemType.PHOTO) ? `data:image/png;base64,${item.content}` : item.content;
-
           const shareOptions = {
             files: [file],
           };
@@ -531,7 +531,8 @@ export class SessionNote extends React.Component {
                     <ListItem
                       key={record.id}>
                       <figure className={classes.figure}>
-                        <audio className={classes.itemWrapper} key={record.id} onContextMenu={() => this.handleRecordItem(record.id)} controls>
+                        <audio className={classes.itemWrapper} key={record.id}
+                               onContextMenu={() => this.handleRecordItem(record.id)} controls>
                           <source src={record.content}/>
                         </audio>
                         <figcaption>Ajoutée le {record.createdAt}</figcaption>
@@ -563,7 +564,8 @@ export class SessionNote extends React.Component {
                     <ListItem
                       key={video.id}>
                       <figure className={classes.figure}>
-                        <video className={classes.itemWrapper} key={video.id} onContextMenu={() => this.handleVideoItem(video.id)} controls>
+                        <video className={classes.itemWrapper} key={video.id}
+                               onContextMenu={() => this.handleVideoItem(video.id)} controls>
                           <source src={video.content}/>
                         </video>
                         <figcaption>Ajoutée le {video.createdAt}</figcaption>
