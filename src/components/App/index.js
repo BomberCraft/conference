@@ -121,7 +121,7 @@ export class App extends React.Component {
     const {isLoading, error} = this.state;
 
     if (error) {
-      return;
+      return null;
     }
 
     if (isLoading) {
