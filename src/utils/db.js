@@ -1,8 +1,8 @@
-const initDB = (purgeDB = false) => {
+const initDB = (doPurgeDB = false) => {
   return new Promise((resolve, reject) => {
     const db = window.sqlitePlugin.openDatabase({name: 'conference.db', location: 'default'});
     db.transaction(tx => {
-      purgeDB && purgeDB(tx);
+      doPurgeDB && purgeDB(tx);
 
       // Note(id, sessionId, content, createdAt)
       tx.executeSql(`
