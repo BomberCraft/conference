@@ -13,7 +13,7 @@ import Photo from "material-ui-icons/Photo";
 import Mic from "material-ui-icons/Mic";
 import Videocam from "material-ui-icons/Videocam";
 import Camera from "cordova-plugin-camera/www/CameraConstants";
-import { loadNote, loadMedia } from "./helpers";
+import { loadNote, loadMedia, saveNote } from "./helpers";
 import ItemType from "./helpers/ItemType";
 
 const styles = theme => ({
@@ -130,41 +130,18 @@ export class SessionNote extends React.Component {
     this.setState({[itemType.stateMenuKey]: !this.state[itemType.stateMenuKey]});
   };
 
-  saveNote = () => {
-    if (!window.cordova) {
-      localStorage.setItem(this.props.session.id, this.state.note);
-      this.setState({saveDisabled: true});
-      return;
-    }
-
-    const db = window.sqlitePlugin.openDatabase({name: 'conference.db', location: 'default'});
-
-    const onTransactionError = (error) => {
-      console.error('[TransactionException]: ', error.message);
-    };
-
-    db.transaction(tx => {
-      const query = 'INSERT OR REPLACE INTO note (id, content) VALUES (?, ?)';
-      const parameters = [this.props.session.id, this.state.note];
-
-      const onSqlSuccess = (tx, rs) => {
-        if (rs.rowsAffected !== 0) {
-          this.setState({saveDisabled: true});
-        } else {
+  handleSaveNote = () => {
+    saveNote(this.props.session, this.state.note)
+      .then(resultSet => {
+        if (resultSet.rowsAffected === 0) {
           console.error('[NotModifiedException] Fail to save notes:', 'no record saved');
         }
-      };
-      const onSqlError = (tx, error) => {
-        console.error('[SQLException]', error.message);
-      };
 
-      tx.executeSql(
-        query,
-        parameters,
-        onSqlSuccess,
-        onSqlError
-      );
-    }, onTransactionError);
+        this.setState({saveDisabled: true});
+      })
+      .catch(error => {
+        console.error('[SQLException]', error.message);
+      });
   };
 
   addAPhoto = () => {
@@ -486,14 +463,14 @@ export class SessionNote extends React.Component {
                 margin="normal"
                 placeholder="Saisir une note"
                 value={note}
-                onChange={() => this.handleChanges()}
+                onChange={event => this.handleChanges(event)}
               />
               <Button
                 raised
                 disabled={saveDisabled}
                 color="accent"
                 className={classes.button}
-                onClick={() => this.saveNote()}>
+                onClick={() => this.handleSaveNote()}>
                 Sauvegarder
               </Button>
             </Collapse>

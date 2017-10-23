@@ -68,3 +68,33 @@ export const loadMedia = (session, itemType) => new Promise((resolve, reject) =>
     );
   }, onTransactionError);
 });
+
+export const saveNote = (session, content) => new Promise((resolve, reject) => {
+  if (!window.cordova) {
+    localStorage.setItem(session.id, content);
+    resolve();
+
+    return;
+  }
+
+  const db = window.sqlitePlugin.openDatabase(config.db);
+
+  const onTransactionError = error => {
+    console.error('[TransactionException]: ', error.message);
+  };
+
+  db.transaction(transaction => {
+    const query = 'INSERT OR REPLACE INTO note (id, content) VALUES (?, ?)';
+    const parameters = [session.id, content];
+
+    const onSuccess = (transaction, resultSet) => resolve(resultSet);
+    const onError = (transaction, error) => reject(error);
+
+    transaction.executeSql(
+      query,
+      parameters,
+      onSuccess,
+      onError
+    );
+  }, onTransactionError);
+});
