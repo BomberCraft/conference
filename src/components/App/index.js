@@ -5,6 +5,7 @@ import CircularProgress from 'material-ui/Progress/CircularProgress';
 import {withStyles} from 'material-ui/styles';
 import PropTypes from 'prop-types';
 import Connection from 'cordova-plugin-network-information/www/Connection';
+import initDB from '../../utils/db';
 import fetchData from '../../fetchData';
 import Header from '../Header';
 import Main from '../Main';
@@ -14,7 +15,7 @@ const styles = theme => ({
     position: 'absolute',
     display: 'flex',
     alignItems: 'center',
-    justifyContent:'center',
+    justifyContent: 'center',
     width: '100%',
     height: '100%',
   },
@@ -44,6 +45,26 @@ export class App extends React.Component {
   }
 
   componentWillMount() {
+    const {cordova} = window;
+
+    if (cordova) {
+      initDB(false)
+        .then(() => this.loadData())
+        .catch(error => this.handleError(error));
+    } else {
+      this.loadData();
+    }
+  }
+
+  componentDidMount() {
+    window.addEventListener('online', this.handleOnline, false);
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('online', this.handleOnline, false);
+  }
+
+  loadData() {
     const {navigator, cordova} = window;
 
     if (cordova && navigator.connection.type === Connection.NONE) {
@@ -59,14 +80,6 @@ export class App extends React.Component {
     } else {
       this.handleFetch();
     }
-  }
-
-  componentDidMount() {
-    window.addEventListener('online', this.handleOnline, false);
-  }
-
-  componentWillUnmount() {
-    window.removeEventListener('online', this.handleOnline, false);
   }
 
   handleFetch() {
@@ -91,6 +104,12 @@ export class App extends React.Component {
 
   handleError(error) {
     this.setState({error, isLoading: false});
+
+    if (window.navigator.notification) {
+      navigator.notification.alert(error.message, navigator.app.exitApp, 'Initialization Error', 'Exit');
+    } else {
+      alert(`Initialization error: ${error.message}`);
+    }
   }
 
   handleOnline() {
@@ -102,13 +121,13 @@ export class App extends React.Component {
     const {isLoading, error} = this.state;
 
     if (error) {
-      return <p>{error.message}</p>;
+      return;
     }
 
     if (isLoading) {
       return (
         <div className={classes.progressContainer}>
-          <CircularProgress size={50} />
+          <CircularProgress size={50}/>
         </div>
       );
     }
