@@ -12,6 +12,10 @@ const config = {
     speakers: `${apiUrl}/${speakers}`,
   },
   imgUrl: devfest,
+  db: {
+    name: 'conference.db',
+    location: 'default',
+  },
 };
 
 export default config;
