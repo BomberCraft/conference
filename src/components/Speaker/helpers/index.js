@@ -21,7 +21,7 @@ export const getSpeaker = (id, entities) => {
   })
 };
 
-export const getSpeakers = (entities) => {
+export const getSpeakers = entities => {
   return Object.values(entities.speakers);
 };
 
@@ -48,10 +48,7 @@ export const findContacts = speaker => new Promise((resolve, reject) => {
 
 export const createContact = speaker => new Promise(resolve => {
   const socials = speaker.socials || [];
-
-  const urls = socials.map((social, index) => (
-    new ContactField(social.name, social.link, 0 === index)
-  ));
+  const urls = socials.map((social, index) => new ContactField(social.name, social.link, 0 === index));
 
   const contact = navigator.contacts.create({
     displayName: speaker.name,
