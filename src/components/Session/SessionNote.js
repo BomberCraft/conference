@@ -13,8 +13,8 @@ import Photo from "material-ui-icons/Photo";
 import Mic from "material-ui-icons/Mic";
 import Videocam from "material-ui-icons/Videocam";
 import Camera from "cordova-plugin-camera/www/CameraConstants";
+import { loadNote, loadMedia } from "./helpers";
 import ItemType from "./helpers/ItemType";
-
 
 const styles = theme => ({
   card: {
@@ -40,7 +40,7 @@ const styles = theme => ({
     transform: 'rotate(180deg)',
   },
   figure: {
-    margin: '0',
+    margin: 0,
   },
   contentButton: {
     padding: 0,
@@ -56,121 +56,71 @@ export class SessionNote extends React.Component {
     error: null,
     saveDisabled: true,
     note: '',
-    isNoteExpanded: true,
     photos: [],
-    isPhotosExpanded: true,
     records: [],
-    isRecordsExpanded: true,
     videos: [],
+    isNoteExpanded: true,
+    isPhotosExpanded: true,
+    isRecordsExpanded: true,
     isVideosExpanded: true,
   };
 
   componentWillMount() {
+    const {session} = this.props;
+
     if (!window.cordova) {
-      const note = localStorage.getItem(this.props.session.id) || '';
+      const note = localStorage.getItem(session.id) || '';
+
       this.setState({note, isLoading: false});
+
       return;
     }
 
-    const onLoadingError = () => {
+    const loadMedias = [
+      ItemType.PHOTO,
+      ItemType.RECORD,
+      ItemType.VIDEO,
+    ].map(itemType => loadMedia(session, itemType));
 
-    };
-
-    const onLoadingDone = () => {
-      this.setState({isLoading: false});
-    };
-
-    this.loadNote()
-      .catch(onLoadingError)
-      .then(() => this.loadItems(ItemType.PHOTO))
-      .catch(onLoadingError)
-      .then(() => this.loadItems(ItemType.RECORD))
-      .catch(onLoadingError)
-      .then(() => this.loadItems(ItemType.VIDEO))
-      .catch(onLoadingError)
-      .then(onLoadingDone);
+    loadNote(session)
+      .then(resultSet => this.handleNoteData(resultSet))
+      .then(() => Promise.all(loadMedias))
+      .then(data => this.handleMediasTypeData(data))
+      .then(() => this.setState({isLoading: false}))
+      .catch(error => {
+        console.error('[SQLException] Fail to load note data:', error.message);
+      });
   }
 
-  loadNote = () => new Promise((resolve, reject) => {
-    const db = window.sqlitePlugin.openDatabase({name: 'conference.db', location: 'default'});
+  handleNoteData(resultSet) {
+    if (resultSet.rows.length !== 0) {
+      this.setState({
+        note: resultSet.rows.item(0).content,
+      });
+    }
+  }
 
-    const onTransactionError = (error) => {
-      console.error('[TransactionException]: ', error.message);
-      reject();
-    };
+  handleMediasTypeData(data) {
+    const nextState = {};
 
-    db.transaction(tx => {
-      const query = 'SELECT content FROM note WHERE id = ?';
-      const parameters = [this.props.session.id];
+    data.forEach(({ itemType, resultSet }) => {
+      if (resultSet.rows.length !== 0) {
+        const {stateKey} = itemType;
 
-      const onSqlSuccess = (tx, rs) => {
-        const nextState = {};
-        if (rs.rows.length !== 0) {
-          nextState.note = rs.rows.item(0).content;
-          this.setState(nextState);
+        for (let i = 0; i < resultSet.rows.length; i++) {
+          const item = resultSet.rows.item(i);
+
+          nextState[stateKey] = [...(nextState[stateKey] || []), {
+            id: item.id,
+            content: item.content,
+            createdAt: item.createdAt
+          }];
         }
-        resolve();
-      };
-      const onSqlError = (tx, error) => {
-        console.error('[SQLException] Fail to load notes:', error.message);
-        reject();
-      };
+      }
+    });
 
-      tx.executeSql(
-        query,
-        parameters,
-        onSqlSuccess,
-        onSqlError
-      );
-    }, onTransactionError);
-  });
-
-  loadItems = (itemType) => new Promise((resolve, reject) => {
-    const db = window.sqlitePlugin.openDatabase({name: 'conference.db', location: 'default'});
-
-    const {stateKey, dbEntity, dbJoinEntity, dbJoinPrimaryKey} = itemType;
-
-    const onTransactionError = (error) => {
-      console.error('[TransactionException](', stateKey, '):', error.message);
-      reject();
-    };
-
-    db.transaction(tx => {
-      const query = `
-        SELECT ${dbEntity}.id, ${dbEntity}.content, datetime(${dbEntity}.createdAt, 'localtime') AS createdAt 
-        FROM ${dbEntity} INNER JOIN ${dbJoinEntity} on ${dbJoinEntity}.${dbJoinPrimaryKey} = ${dbEntity}.id 
-        WHERE noteId = ?
-      `;
-      const parameters = [this.props.session.id];
-
-      const onSqlSuccess = (tx, rs) => {
-        const nextState = {};
-        if (rs.rows.length !== 0) {
-          for (let i = 0; i < rs.rows.length; i++) {
-            const item = rs.rows.item(i);
-            nextState[stateKey] = [...(nextState[stateKey] || []), {
-              id: item.id,
-              content: item.content,
-              createdAt: item.createdAt
-            }];
-          }
-          this.setState(nextState);
-        }
-        resolve();
-      };
-      const onSqlError = (tx, error) => {
-        console.error(`[SQLException] Fail to load ${stateKey}:`, error.message);
-        reject();
-      };
-
-      tx.executeSql(
-        query,
-        parameters,
-        onSqlSuccess,
-        onSqlError
-      );
-    }, onTransactionError);
-  });
+    this.setState(nextState);
+  }
 
   handleChanges = (event) => {
     this.setState({note: event.target.value, saveDisabled: false});
