@@ -13,6 +13,7 @@ import Photo from "material-ui-icons/Photo";
 import Mic from "material-ui-icons/Mic";
 import Videocam from "material-ui-icons/Videocam";
 import Camera from "cordova-plugin-camera/www/CameraConstants";
+import ItemType from "./helpers/ItemType";
 
 
 const styles = theme => ({
@@ -81,11 +82,11 @@ export class SessionNote extends React.Component {
 
     this.loadNote()
       .catch(onLoadingError)
-      .then(() => this.loadItems('photos', 'photo', 'notePhoto'))
+      .then(() => this.loadItems(ItemType.PHOTO))
       .catch(onLoadingError)
-      .then(() => this.loadItems('records', 'record', 'noteRecord'))
+      .then(() => this.loadItems(ItemType.RECORD))
       .catch(onLoadingError)
-      .then(() => this.loadItems('videos', 'video', 'noteVideo'))
+      .then(() => this.loadItems(ItemType.VIDEO))
       .catch(onLoadingError)
       .then(onLoadingDone);
   }
@@ -124,8 +125,10 @@ export class SessionNote extends React.Component {
     }, onTransactionError);
   });
 
-  loadItems = (stateKey, dbEntity, dbJoinEntity) => new Promise((resolve, reject) => {
+  loadItems = (itemType) => new Promise((resolve, reject) => {
     const db = window.sqlitePlugin.openDatabase({name: 'conference.db', location: 'default'});
+
+    const {stateKey, dbEntity, dbJoinEntity, dbJoinPrimaryKey} = itemType;
 
     const onTransactionError = (error) => {
       console.error('[TransactionException](', stateKey, '):', error.message);
@@ -135,7 +138,7 @@ export class SessionNote extends React.Component {
     db.transaction(tx => {
       const query = `
         SELECT ${dbEntity}.id, ${dbEntity}.content, datetime(${dbEntity}.createdAt, 'localtime') AS createdAt 
-        FROM ${dbEntity} INNER JOIN ${dbJoinEntity} on ${dbJoinEntity}.${dbEntity}Id = ${dbEntity}.id 
+        FROM ${dbEntity} INNER JOIN ${dbJoinEntity} on ${dbJoinEntity}.${dbJoinPrimaryKey} = ${dbEntity}.id 
         WHERE noteId = ?
       `;
       const parameters = [this.props.session.id];
@@ -173,9 +176,8 @@ export class SessionNote extends React.Component {
     this.setState({note: event.target.value, saveDisabled: false});
   };
 
-  toggleMenu = (menu) => {
-    const stateName = `is${menu}Expanded`;
-    this.setState({[stateName]: !this.state[stateName]});
+  toggleMenu = (itemType) => {
+    this.setState({[itemType.stateMenuKey]: !this.state[itemType.stateMenuKey]});
   };
 
   saveNote = () => {
@@ -237,11 +239,13 @@ export class SessionNote extends React.Component {
       console.error('[PictureException] Fail to add a photo:', message);
     };
 
-    navigator.camera.getPicture((imageData) => this.saveItem('photos', 'photo', 'notePhoto', imageData), onCameraError, cameraOptions);
+    navigator.camera.getPicture((imageData) => this.saveItem(ItemType.PHOTO, imageData), onCameraError, cameraOptions);
   };
 
-  saveItem = (stateKey, dbEntity, dbJoinEntity, itemContent) => {
+  saveItem = (itemType, itemContent) => {
     const db = window.sqlitePlugin.openDatabase({name: 'conference.db', location: 'default'});
+
+    const {stateKey, dbEntity, dbJoinEntity, dbJoinPrimaryKey} = itemType;
 
     const onTransactionError = (error) => {
       console.error('[TransactionException] (', stateKey, '):', error.message);
@@ -257,7 +261,7 @@ export class SessionNote extends React.Component {
           return;
         }
 
-        const childQuery = `INSERT INTO ${dbJoinEntity} (noteId, ${dbEntity}Id) VALUES (?, ?)`;
+        const childQuery = `INSERT INTO ${dbJoinEntity} (noteId, ${dbJoinPrimaryKey}) VALUES (?, ?)`;
         const childParameters = [this.props.session.id, rs.insertId];
 
         const onChildSqlSuccess = (tx, childRs) => {
@@ -319,8 +323,10 @@ export class SessionNote extends React.Component {
     }, onTransactionError);
   };
 
-  deleteItem = (stateKey, dbEntity, itemId) => {
+  deleteItem = (itemType, itemId) => {
     const db = window.sqlitePlugin.openDatabase({name: 'conference.db', location: 'default'});
+
+    const {stateKey, dbEntity} = itemType;
 
     const onTransactionError = (error) => {
       console.error('[TransactionException] (', stateKey, '):', error.message);
@@ -359,18 +365,20 @@ export class SessionNote extends React.Component {
   };
 
   handlePhotoItem = (itemId) => {
-    this.handleItem("Que faire de la photo ?", 'photos', 'photo', itemId);
+    this.handleItem("Que faire de la photo ?", ItemType.PHOTO, itemId);
   };
 
   handleRecordItem = (itemId) => {
-    this.handleItem("Que faire de l'enregistrement ?", 'records', 'record', itemId);
+    this.handleItem("Que faire de l'enregistrement ?", ItemType.RECORD, itemId);
   };
 
   handleVideoItem = (itemId) => {
-    this.handleItem("Que faire de la video ?", 'videos', 'video', itemId);
+    this.handleItem("Que faire de la video ?", ItemType.VIDEO, itemId);
   };
 
-  handleItem = (title, stateKey, dbEntity, itemId) => {
+  handleItem = (title, itemType, itemId) => {
+    const {stateKey} = itemType;
+
     console.warn('handleItem', stateKey, itemId);
 
     const actionSheetButtons = [];
@@ -408,8 +416,11 @@ export class SessionNote extends React.Component {
       switch (buttonIndex) {
         case ActionSheetButtonsIndex.share:
           const item = this.state[stateKey].filter(item => item.id === itemId)[0];
+
+          const file = (itemType === ItemType.PHOTO) ? `data:image/png;base64,${item.content}` : item.content;
+
           const shareOptions = {
-            files: [`data:image/png;base64,${item.content}`],
+            files: [file],
           };
 
           const onShareSuccess = (result) => {
@@ -421,7 +432,7 @@ export class SessionNote extends React.Component {
           window.plugins.socialsharing.shareWithOptions(shareOptions, onShareSuccess, onShareError);
           break;
         case ActionSheetButtonsIndex.delete:
-          this.deleteItem(stateKey, dbEntity, itemId);
+          this.deleteItem(itemType, itemId);
           break;
         default:
       }
@@ -487,7 +498,7 @@ export class SessionNote extends React.Component {
               Note
               <IconButton
                 className={this.state.isNoteExpanded ? classes.expandOpen : classes.expand}
-                onClick={() => this.toggleMenu('Note')}
+                onClick={() => this.toggleMenu(ItemType.NOTE)}
                 aria-expanded={this.state.isNoteExpanded}
                 aria-label="Show more"
               >
@@ -521,7 +532,7 @@ export class SessionNote extends React.Component {
                 Photos
                 <IconButton
                   className={this.state.isPhotosExpanded ? classes.expandOpen : classes.expand}
-                  onClick={() => this.toggleMenu('Photos')}
+                  onClick={() => this.toggleMenu(ItemType.PHOTO)}
                   aria-expanded={this.state.isPhotosExpanded}
                   aria-label="Show more"
                 >
@@ -555,7 +566,7 @@ export class SessionNote extends React.Component {
                 Enregistrements
                 <IconButton
                   className={this.state.isRecordsExpanded ? classes.expandOpen : classes.expand}
-                  onClick={() => this.toggleMenu('Records')}
+                  onClick={() => this.toggleMenu(ItemType.RECORD)}
                   aria-expanded={this.state.isRecordsExpanded}
                   aria-label="Show more"
                 >
@@ -588,7 +599,7 @@ export class SessionNote extends React.Component {
                 Vidéos
                 <IconButton
                   className={this.state.isVideosExpanded ? classes.expandOpen : classes.expand}
-                  onClick={() => this.toggleMenu('Videos')}
+                  onClick={() => this.toggleMenu(ItemType.VIDEO)}
                   aria-expanded={this.state.isVideosExpanded}
                   aria-label="Show more"
                 >
