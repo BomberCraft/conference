@@ -42,7 +42,7 @@ const styles = theme => ({
   figure: {
     margin: 0,
   },
-  contentButton: {
+  itemWrapper: {
     padding: 0,
   },
   img: {
@@ -307,11 +307,35 @@ export class SessionNote extends React.Component {
   };
 
   captureAudio = () => {
+    const onCaptureSuccess = (mediaFiles) => {
+      var i, path, len;
+      for (i = 0, len = mediaFiles.length; i < len; i += 1) {
+        path = mediaFiles[i].fullPath;
+        this.saveItem(ItemType.RECORD, path);
+      }
+    };
 
+    const onCaptureError = (error) => {
+      console.error('[CaptureExeption]', error);
+    };
+
+    navigator.device.capture.captureAudio(onCaptureSuccess, onCaptureError, {limit: 1});
   };
 
   captureVideo = () => {
+    const onCaptureSuccess = (mediaFiles) => {
+      var i, path, len;
+      for (i = 0, len = mediaFiles.length; i < len; i += 1) {
+        path = mediaFiles[i].fullPath;
+        this.saveItem(ItemType.VIDEO, path);
+      }
+    };
 
+    const onCaptureError = (error) => {
+      console.error('[CaptureExeption]', error);
+    };
+
+    navigator.device.capture.captureVideo(onCaptureSuccess, onCaptureError, {limit: 1});
   };
 
   handlePhotoItem = (itemId) => {
@@ -495,7 +519,7 @@ export class SessionNote extends React.Component {
                     <ListItem
                       key={photo.id}>
                       <figure className={classes.figure}>
-                        <Button key={photo.id} className={classes.contentButton}
+                        <Button key={photo.id} className={classes.itemWrapper}
                                 onContextMenu={() => this.handlePhotoItem(photo.id)}>
                           <img className={classes.img} alt={`n°${index}`}
                                src={`data:image/png;base64,${photo.content}`}/>
@@ -529,10 +553,9 @@ export class SessionNote extends React.Component {
                     <ListItem
                       key={record.id}>
                       <figure className={classes.figure}>
-                        <Button key={record.id} className={classes.contentButton}
-                                onContextMenu={() => this.handleRecordItem(record.id)}>
-                          <div>{record.content}</div>
-                        </Button>
+                        <audio className={classes.itemWrapper} key={record.id} onContextMenu={() => this.handleRecordItem(record.id)} controls>
+                          <source src={record.content}/>
+                        </audio>
                         <figcaption>Ajoutée le {record.createdAt}</figcaption>
                       </figure>
                     </ListItem>
@@ -562,10 +585,9 @@ export class SessionNote extends React.Component {
                     <ListItem
                       key={video.id}>
                       <figure className={classes.figure}>
-                        <Button key={video.id} className={classes.contentButton}
-                                onContextMenu={() => this.handleVideoItem(video.id)}>
-                          <div>{video.content}</div>
-                        </Button>
+                        <video className={classes.itemWrapper} key={video.id} onContextMenu={() => this.handleVideoItem(video.id)} controls>
+                          <source src={video.content}/>
+                        </video>
                         <figcaption>Ajoutée le {video.createdAt}</figcaption>
                       </figure>
                     </ListItem>
