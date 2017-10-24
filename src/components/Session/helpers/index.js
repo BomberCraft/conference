@@ -10,28 +10,39 @@ export const getSessions = (entities) => {
   return Object.values(entities.sessions);
 };
 
-export const loadNote = session => new Promise((resolve, reject) => {
-  const db = window.sqlitePlugin.openDatabase(config.db);
+const getDb = () => window.sqlitePlugin.openDatabase(config.db);
+const defaultTransactionError = error => Promise.reject(error);
 
-  const onTransactionError = (error) => {
-    console.error('[TransactionException]: ', error.message);
-    reject();
+const execQuery = (transaction, query, parameters) => new Promise(resolve => {
+  const onSuccess = (transaction, resultSet) => resolve(resultSet);
+
+  transaction.executeSql(
+    query,
+    parameters,
+    onSuccess,
+    defaultTransactionError
+  );
+});
+
+export const loadNote = sessionId => new Promise(resolve => {
+  const selectTransaction = transaction => {
+    const query = `
+      SELECT content
+      FROM note
+      WHERE id = ?
+    `;
+
+    const parameters = [sessionId];
+
+    execQuery(transaction, query, parameters)
+      .then(resultSet => resolve(resultSet))
+      .catch(defaultTransactionError);
   };
 
-  db.transaction(transaction => {
-    const query = 'SELECT content FROM note WHERE id = ?';
-    const parameters = [session.id];
-
-    const onSuccess = (transaction, resultSet) => resolve(resultSet);
-    const onError = (transaction, error) => reject(error);
-
-    transaction.executeSql(
-      query,
-      parameters,
-      onSuccess,
-      onError
-    );
-  }, onTransactionError);
+  getDb().transaction(
+    selectTransaction,
+    defaultTransactionError
+  );
 });
 
 export const loadMedia = (session, itemType) => new Promise((resolve, reject) => {

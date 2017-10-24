@@ -83,7 +83,7 @@ export class SessionNote extends React.Component {
       ItemType.VIDEO,
     ].map(itemType => loadMedia(session, itemType));
 
-    loadNote(session)
+    loadNote(session.id)
       .then(resultSet => this.handleNoteData(resultSet))
       .then(() => Promise.all(loadMedias))
       .then(data => this.handleMediasTypeData(data))
