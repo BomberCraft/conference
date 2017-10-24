@@ -11,7 +11,6 @@ export const getSessions = (entities) => {
 };
 
 const getDb = () => window.sqlitePlugin.openDatabase(config.db);
-//const defaultTransactionError = error => Promise.reject(error);
 
 const execQuery = (transaction, query, parameters) => new Promise((resolve, reject) => {
   const onSuccess = (transaction, resultSet) => resolve(resultSet);
@@ -34,13 +33,11 @@ export const loadNote = sessionId => new Promise((resolve, reject) => {
 
     const parameters = [sessionId];
 
-    const onSuccess = resultSet => {
-      let content = '';
-      if (resultSet.rows.length !== 0) {
-        content = resultSet.rows.item(0).content;
-      }
-      resolve(content);
-    };
+    const onSuccess = resultSet => resolve(
+      resultSet.rows.length !== 0
+        ? resultSet.rows.item(0).content
+        : ''
+    );
 
     execQuery(transaction, query, parameters)
       .then(onSuccess)
@@ -53,14 +50,12 @@ export const loadNote = sessionId => new Promise((resolve, reject) => {
   );
 });
 
-export const loadMedia = (session, itemType) => new Promise((resolve, reject) => {
-  const db = window.sqlitePlugin.openDatabase(config.db);
-
+export const loadMedia = (sessionId, itemType) => new Promise((resolve, reject) => {
   const {dbEntity, dbJoinEntity, dbJoinPrimaryKey} = itemType;
 
-  const onTransactionError = error => reject(error);
+  console.warn('loadMedia', sessionId, itemType);
 
-  db.transaction(transaction => {
+  const selectTransaction = transaction => {
     const query = `
       SELECT
         ${dbEntity}.id,
@@ -71,21 +66,40 @@ export const loadMedia = (session, itemType) => new Promise((resolve, reject) =>
           on ${dbJoinEntity}.${dbJoinPrimaryKey} = ${dbEntity}.id
       WHERE noteId = ?
     `;
-    const parameters = [session.id];
 
-    const onSuccess = (transaction, resultSet) => resolve({
-      itemType,
-      resultSet,
-    });
-    const onError = (transaction, error) => reject(error);
+    const parameters = [sessionId];
 
-    transaction.executeSql(
-      query,
-      parameters,
-      onSuccess,
-      onError
-    );
-  }, onTransactionError);
+    const onSuccess = resultSet => {
+      let medias = [];
+
+      if (resultSet.rows.length !== 0) {
+        for (let i = 0; i < resultSet.rows.length; i++) {
+          const {id, content, createdAt} = resultSet.rows.item(i);
+
+          medias.push({id, content, createdAt});
+        }
+      }
+
+      console.warn('loadMedia onSuccess', {
+        itemType,
+        medias,
+      });
+
+      resolve({
+        itemType,
+        medias,
+      })
+    };
+
+    execQuery(transaction, query, parameters)
+      .then(onSuccess)
+      .catch(error => reject(error));
+  };
+
+  getDb().transaction(
+    selectTransaction,
+    error => reject(error)
+  );
 });
 
 export const saveNote = (session, content) => new Promise((resolve, reject) => {

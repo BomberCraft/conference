@@ -81,7 +81,7 @@ export class SessionNote extends React.Component {
       ItemType.PHOTO,
       ItemType.RECORD,
       ItemType.VIDEO,
-    ].map(itemType => loadMedia(session, itemType));
+    ].map(itemType => loadMedia(session.id, itemType));
 
     loadNote(session.id)
       .then(resultSet => this.handleNoteData(resultSet))
@@ -101,21 +101,17 @@ export class SessionNote extends React.Component {
   handleMediasTypeData(data) {
     const nextState = {};
 
-    data.forEach(({itemType, resultSet}) => {
-      if (resultSet.rows.length !== 0) {
-        const {stateKey} = itemType;
+    console.warn('handleMediasTypeData', data);
 
-        for (let i = 0; i < resultSet.rows.length; i++) {
-          const item = resultSet.rows.item(i);
+    data.forEach(({itemType, medias}) => {
+      const {stateKey} = itemType;
 
-          nextState[stateKey] = [...(nextState[stateKey] || []), {
-            id: item.id,
-            content: item.content,
-            createdAt: item.createdAt
-          }];
-        }
+      for (let i = 0; i < medias.length; i++) {
+        nextState[stateKey] = [...(nextState[stateKey] || []), medias[i]];
       }
     });
+
+    console.warn('handleMediasTypeData nextState', nextState);
 
     this.setState(nextState);
   }
