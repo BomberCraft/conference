@@ -1,20 +1,20 @@
-import React from "react";
-import {withStyles} from "material-ui/styles";
-import Button from "material-ui/Button";
-import TextField from "material-ui/TextField";
-import Card, {CardContent} from "material-ui/Card";
-import List, {ListItem} from "material-ui/List";
-import Collapse from "material-ui/transitions/Collapse";
-import Typography from "material-ui/Typography";
-import IconButton from "material-ui/IconButton";
-import ExpandMoreIcon from "material-ui-icons/ExpandMore";
-import AddAPhoto from "material-ui-icons/AddAPhoto";
-import Photo from "material-ui-icons/Photo";
-import Mic from "material-ui-icons/Mic";
-import Videocam from "material-ui-icons/Videocam";
-import Camera from "cordova-plugin-camera/www/CameraConstants";
-import {loadNote, loadMedia, saveNote} from "./helpers";
-import ItemType from "./helpers/ItemType";
+import React from 'react';
+import {withStyles} from 'material-ui/styles';
+import Button from 'material-ui/Button';
+import TextField from 'material-ui/TextField';
+import Card, {CardContent} from 'material-ui/Card';
+import List, {ListItem} from 'material-ui/List';
+import Collapse from 'material-ui/transitions/Collapse';
+import Typography from 'material-ui/Typography';
+import IconButton from 'material-ui/IconButton';
+import ExpandMoreIcon from 'material-ui-icons/ExpandMore';
+import AddAPhoto from 'material-ui-icons/AddAPhoto';
+import Photo from 'material-ui-icons/Photo';
+import Mic from 'material-ui-icons/Mic';
+import Videocam from 'material-ui-icons/Videocam';
+import Camera from 'cordova-plugin-camera/www/CameraConstants';
+import {loadNote, saveNote, loadMedia, deleteMedia} from './helpers';
+import ItemType from './helpers/ItemType';
 
 const styles = theme => ({
   card: {
@@ -242,37 +242,19 @@ export class SessionNote extends React.Component {
     }, onTransactionError);
   };
 
-  deleteItem = (itemType, itemId) => {
-    const db = window.sqlitePlugin.openDatabase({name: 'conference.db', location: 'default'});
+  handleDeleteMedia = (itemType, mediaId) => {
+    const {stateKey} = itemType;
 
-    const {stateKey, dbEntity} = itemType;
+    deleteMedia(itemType, mediaId)
+      .then(() => {
+        const nextState = {[stateKey]: this.state[stateKey].filter(media => media.id !== mediaId)};
 
-    const onTransactionError = (error) => {
-      console.error('[TransactionException] (', stateKey, '):', error.message);
-    };
-
-    db.transaction(tx => {
-      const query = `DELETE FROM ${dbEntity} WHERE id = (?)`;
-      const parameters = [itemId];
-
-      const onSqlSuccess = (tx, rs) => {
-        if (rs.rowsAffected === 0) {
-          console.error('[NotModifiedException] Fail to save', stateKey);
-          return;
-        }
-        this.setState({[stateKey]: this.state[stateKey].filter(item => item.id !== itemId)});
-      };
-      const onSqlError = (tx, error) => {
-        console.error('[SQLException] (', stateKey, '):', error.message);
-      };
-
-      tx.executeSql(
-        query,
-        parameters,
-        onSqlSuccess,
-        onSqlError
-      );
-    }, onTransactionError);
+        this.setState(nextState);
+      })
+      .catch(error => {
+        console.error('[SQLException] (', stateKey, '):', error);
+        // @todo toast error
+      });
   };
 
   captureAudio = () => this.capture(ItemType.RECORD);
@@ -302,19 +284,19 @@ export class SessionNote extends React.Component {
     }
   };
 
-  handlePhotoItem = (itemId) => {
-    this.handleItem("Que faire de la photo ?", ItemType.PHOTO, itemId);
+  handlePhotoMedia = mediaId => {
+    this.handleMedia("Que faire de la photo ?", ItemType.PHOTO, mediaId);
   };
 
-  handleRecordItem = (itemId) => {
-    this.handleItem("Que faire de l'enregistrement ?", ItemType.RECORD, itemId);
+  handleRecordMedia = mediaId => {
+    this.handleMedia("Que faire de l'enregistrement ?", ItemType.RECORD, mediaId);
   };
 
-  handleVideoItem = (itemId) => {
-    this.handleItem("Que faire de la video ?", ItemType.VIDEO, itemId);
+  handleVideoMedia = mediaId => {
+    this.handleMedia("Que faire de la video ?", ItemType.VIDEO, mediaId);
   };
 
-  handleItem = (title, itemType, itemId) => {
+  handleMedia = (title, itemType, mediaId) => {
     const {stateKey} = itemType;
 
     const actionSheetButtons = [];
@@ -351,8 +333,8 @@ export class SessionNote extends React.Component {
     };
 
     const callback = (buttonIndex) => {
-      const item = this.state[stateKey].filter(item => item.id === itemId)[0];
-      const file = (itemType === ItemType.PHOTO) ? `data:image/png;base64,${item.content}` : item.content;
+      const media = this.state[stateKey].filter(item => item.id === mediaId)[0];
+      const file = (itemType === ItemType.PHOTO) ? `data:image/png;base64,${media.content}` : media.content;
 
       switch (buttonIndex) {
         case ActionSheetButtonsIndex.open:
@@ -375,7 +357,7 @@ export class SessionNote extends React.Component {
           window.plugins.socialsharing.shareWithOptions(shareOptions, onShareSuccess, onShareError);
           break;
         case ActionSheetButtonsIndex.delete:
-          this.deleteItem(itemType, itemId);
+          this.handleDeleteMedia(itemType, mediaId);
           break;
         default:
       }
@@ -489,7 +471,7 @@ export class SessionNote extends React.Component {
                       key={photo.id}>
                       <figure className={classes.figure}>
                         <Button key={photo.id} className={classes.itemWrapper}
-                                onContextMenu={() => this.handlePhotoItem(photo.id)}>
+                                onContextMenu={() => this.handlePhotoMedia(photo.id)}>
                           <img className={classes.img} alt={`n°${index}`}
                                src={`data:image/png;base64,${photo.content}`}/>
                         </Button>
@@ -523,7 +505,7 @@ export class SessionNote extends React.Component {
                       key={record.id}>
                       <figure className={classes.figure}>
                         <audio className={classes.itemWrapper} key={record.id}
-                               onContextMenu={() => this.handleRecordItem(record.id)} controls>
+                               onContextMenu={() => this.handleRecordMedia(record.id)} controls>
                           <source src={record.content}/>
                         </audio>
                         <figcaption>Ajoutée le {record.createdAt}</figcaption>
@@ -556,7 +538,7 @@ export class SessionNote extends React.Component {
                       key={video.id}>
                       <figure className={classes.figure}>
                         <video className={classes.itemWrapper} key={video.id}
-                               onContextMenu={() => this.handleVideoItem(video.id)} controls>
+                               onContextMenu={() => this.handleVideoMedia(video.id)} controls>
                           <source src={video.content}/>
                         </video>
                         <figcaption>Ajoutée le {video.createdAt}</figcaption>

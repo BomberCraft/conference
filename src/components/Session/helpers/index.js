@@ -115,3 +115,26 @@ export const saveNote = (sessionId, content) => new Promise((resolve, reject) =>
     error => reject(error)
   );
 });
+
+export const deleteMedia = (itemType, mediaId) => new Promise((resolve, reject) => {
+  const {dbEntity} = itemType;
+
+  const deleteTransaction = transaction => {
+    const query = `
+      DELETE
+      FROM ${dbEntity}
+      WHERE id = (?)
+    `;
+
+    const parameters = [mediaId];
+
+    execQuery(transaction, query, parameters)
+    .then(resultSet => resolve())
+    .catch(error => reject(error));
+  };
+
+  getDb().transaction(
+    deleteTransaction,
+    error => reject(error)
+  );
+});
