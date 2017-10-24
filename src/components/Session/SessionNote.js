@@ -101,8 +101,6 @@ export class SessionNote extends React.Component {
   handleMediasTypeData(data) {
     const nextState = {};
 
-    console.warn('handleMediasTypeData', data);
-
     data.forEach(({itemType, medias}) => {
       const {stateKey} = itemType;
 
@@ -110,8 +108,6 @@ export class SessionNote extends React.Component {
         nextState[stateKey] = [...(nextState[stateKey] || []), medias[i]];
       }
     });
-
-    console.warn('handleMediasTypeData nextState', nextState);
 
     this.setState(nextState);
   }
@@ -132,16 +128,11 @@ export class SessionNote extends React.Component {
       return;
     }
 
-    saveNote(this.props.session, this.state.note)
-      .then(resultSet => {
-        if (resultSet.rowsAffected === 0) {
-          console.error('[NotModifiedException] Fail to save notes:', 'no record saved');
-        }
-
-        this.setState({saveDisabled: true});
-      })
+    saveNote(this.props.session.id, this.state.note)
+      .then(() => this.setState({saveDisabled: true}))
       .catch(error => {
-        console.error('[SQLException]', error.message);
+        console.error('[SQLException]', error);
+        // @todo toast error
       });
   };
 

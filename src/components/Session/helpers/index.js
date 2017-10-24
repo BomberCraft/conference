@@ -53,8 +53,6 @@ export const loadNote = sessionId => new Promise((resolve, reject) => {
 export const loadMedia = (sessionId, itemType) => new Promise((resolve, reject) => {
   const {dbEntity, dbJoinEntity, dbJoinPrimaryKey} = itemType;
 
-  console.warn('loadMedia', sessionId, itemType);
-
   const selectTransaction = transaction => {
     const query = `
       SELECT
@@ -80,11 +78,6 @@ export const loadMedia = (sessionId, itemType) => new Promise((resolve, reject) 
         }
       }
 
-      console.warn('loadMedia onSuccess', {
-        itemType,
-        medias,
-      });
-
       resolve({
         itemType,
         medias,
@@ -102,25 +95,23 @@ export const loadMedia = (sessionId, itemType) => new Promise((resolve, reject) 
   );
 });
 
-export const saveNote = (session, content) => new Promise((resolve, reject) => {
-  const db = window.sqlitePlugin.openDatabase(config.db);
+export const saveNote = (sessionId, content) => new Promise((resolve, reject) => {
+  const upsertTransaction = transaction => {
+    const query = `
+      INSERT OR REPLACE
+      INTO note (id, content)
+      VALUES (?, ?)
+    `;
 
-  const onTransactionError = error => {
-    console.error('[TransactionException]: ', error.message);
+    const parameters = [sessionId, content];
+
+    execQuery(transaction, query, parameters)
+      .then(resultSet => resolve())
+      .catch(error => reject(error));
   };
 
-  db.transaction(transaction => {
-    const query = 'INSERT OR REPLACE INTO note (id, content) VALUES (?, ?)';
-    const parameters = [session.id, content];
-
-    const onSuccess = (transaction, resultSet) => resolve(resultSet);
-    const onError = (transaction, error) => reject(error);
-
-    transaction.executeSql(
-      query,
-      parameters,
-      onSuccess,
-      onError
-    );
-  }, onTransactionError);
+  getDb().transaction(
+    upsertTransaction,
+    error => reject(error)
+  );
 });
