@@ -22,6 +22,7 @@
     "cordova-plugin-network-information": "^1.3.3",
     "cordova-plugin-whitelist": "^1.3.2",
     "cordova-plugin-x-socialsharing": "^5.2.1",
+    "cordova-plugin-x-toast": "^2.6.0",
     "cordova-sqlite-storage": "^2.0.4",
     "es6-promise-plugin": "^4.1.0",
     "marked": "^0.3.6",
@@ -65,7 +66,8 @@
       "cordova-plugin-actionsheet": {},
       "cordova-plugin-media-capture": {},
       "cordova-plugin-dialogs": {},
-      "cordova-open": {}
+      "cordova-open": {},
+      "cordova-plugin-x-toast": {}
     },
     "platforms": [
       "android"
