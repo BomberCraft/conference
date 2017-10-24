@@ -56,7 +56,7 @@ export class SessionNote extends React.Component {
     isLoading: true,
     error: null,
     saveDisabled: true,
-    note: '',
+    content: '',
     photos: [],
     records: [],
     videos: [],
@@ -70,9 +70,9 @@ export class SessionNote extends React.Component {
     const {session} = this.props;
 
     if (!window.cordova) {
-      const note = localStorage.getItem(session.id) || '';
+      const content = localStorage.getItem(session.id) || '';
 
-      this.setState({note, isLoading: false});
+      this.setState({content, isLoading: false});
 
       return;
     }
@@ -95,7 +95,7 @@ export class SessionNote extends React.Component {
   }
 
   handleNoteData(content) {
-    this.setState({note: content});
+    this.setState({content});
   }
 
   handleMediasTypeData(data) {
@@ -113,7 +113,7 @@ export class SessionNote extends React.Component {
   }
 
   handleChanges = (event) => {
-    this.setState({note: event.target.value, saveDisabled: false});
+    this.setState({content: event.target.value, saveDisabled: false});
   };
 
   toggleMenu = (itemType) => {
@@ -122,13 +122,13 @@ export class SessionNote extends React.Component {
 
   handleSaveNote = () => {
     if (!window.cordova) {
-      localStorage.setItem(this.props.session.id, this.state.note);
+      localStorage.setItem(this.props.session.id, this.state.content);
       this.setState({saveDisabled: true});
 
       return;
     }
 
-    saveNote(this.props.session.id, this.state.note)
+    saveNote(this.props.session.id, this.state.content)
       .then(() => this.setState({saveDisabled: true}))
       .catch(error => {
         console.error('[SQLException]', error);
@@ -278,7 +278,7 @@ export class SessionNote extends React.Component {
         navigator.device.capture.captureAudio(onCaptureSuccess, onCaptureError, {limit: 1});
         break;
       case ItemType.VIDEO:
-        navigator.device.capture.captureAudio(onCaptureSuccess, onCaptureError, {limit: 1});
+        navigator.device.capture.captureVideo(onCaptureSuccess, onCaptureError, {limit: 1});
         break;
       default:
     }
@@ -366,11 +366,202 @@ export class SessionNote extends React.Component {
     window.plugins.actionsheet.show(actionSheetOptions, callback);
   };
 
+  renderNote() {
+    const {classes} = this.props;
+    const {content, isNoteExpanded, saveDisabled} = this.state;
+
+    return (
+      <Card className={classes.card}>
+        <CardContent>
+          <Typography type="subheading" component="h3" className={classes.cardMenu}>
+            Note
+            <IconButton
+              className={isNoteExpanded ? classes.expandOpen : classes.expand}
+              onClick={() => this.toggleMenu(ItemType.NOTE)}
+              aria-expanded={isNoteExpanded}
+              aria-label="Show more"
+            >
+              <ExpandMoreIcon />
+            </IconButton>
+          </Typography>
+          <Collapse in={isNoteExpanded} transitionDuration="auto">
+            <TextField
+              className={classes.input}
+              multiline={true}
+              margin="normal"
+              placeholder="Saisir une note"
+              value={content}
+              onChange={event => this.handleChanges(event)}
+            />
+            <Button
+              raised
+              disabled={saveDisabled}
+              color="accent"
+              className={classes.button}
+              onClick={() => this.handleSaveNote()}>
+              Sauvegarder
+            </Button>
+          </Collapse>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  renderPhotos() {
+    const {classes} = this.props;
+    const {photos, isPhotosExpanded} = this.state;
+
+    return photos.length > 0 && (
+      <Card className={classes.card}>
+        <CardContent>
+          <Typography type="subheading" component="h3" className={classes.cardMenu}>
+            Photos
+            <IconButton
+              className={isPhotosExpanded ? classes.expandOpen : classes.expand}
+              onClick={() => this.toggleMenu(ItemType.PHOTO)}
+              aria-expanded={isPhotosExpanded}
+              aria-label="Show more"
+            >
+              <ExpandMoreIcon />
+            </IconButton>
+          </Typography>
+          <Collapse in={isPhotosExpanded} transitionDuration="auto">
+            <List>
+              {photos.map((photo, index) => (
+                <ListItem
+                  key={photo.id}>
+                  <figure className={classes.figure}>
+                    <Button key={photo.id} className={classes.itemWrapper}
+                            onContextMenu={() => this.handlePhotoMedia(photo.id)}>
+                      <img className={classes.img} alt={`n°${index}`}
+                           src={`data:image/png;base64,${photo.content}`}/>
+                    </Button>
+                    <figcaption>Ajoutée le {photo.createdAt}</figcaption>
+                  </figure>
+                </ListItem>
+              ))}
+            </List>
+          </Collapse>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  renderRecords() {
+    const {classes} = this.props;
+    const {records, isRecordsExpanded} = this.state;
+
+    return records.length > 0 && (
+      <Card className={classes.card}>
+        <CardContent>
+          <Typography type="subheading" component="h3" className={classes.cardMenu}>
+            Enregistrements
+            <IconButton
+              className={isRecordsExpanded ? classes.expandOpen : classes.expand}
+              onClick={() => this.toggleMenu(ItemType.RECORD)}
+              aria-expanded={isRecordsExpanded}
+              aria-label="Show more"
+            >
+              <ExpandMoreIcon />
+            </IconButton>
+          </Typography>
+          <Collapse in={isRecordsExpanded} transitionDuration="auto">
+            <List>
+              {records.map((record, index) => (
+                <ListItem
+                  key={record.id}>
+                  <figure className={classes.figure}>
+                    <audio className={classes.itemWrapper} key={record.id}
+                           onContextMenu={() => this.handleRecordMedia(record.id)} controls>
+                      <source src={record.content}/>
+                    </audio>
+                    <figcaption>Ajoutée le {record.createdAt}</figcaption>
+                  </figure>
+                </ListItem>
+              ))}
+            </List>
+          </Collapse>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  renderVideos() {
+    const {classes} = this.props;
+    const {videos, isVideosExpanded} = this.state;
+
+    return videos.length > 0 && (
+      <Card className={classes.card}>
+        <CardContent>
+          <Typography type="subheading" component="h3" className={classes.cardMenu}>
+            Vidéos
+            <IconButton
+              className={isVideosExpanded ? classes.expandOpen : classes.expand}
+              onClick={() => this.toggleMenu(ItemType.VIDEO)}
+              aria-expanded={isVideosExpanded}
+              aria-label="Show more"
+            >
+              <ExpandMoreIcon />
+            </IconButton>
+          </Typography>
+          <Collapse in={isVideosExpanded} transitionDuration="auto">
+            <List>
+              {videos.map((video, index) => (
+                <ListItem
+                  key={video.id}>
+                  <figure className={classes.figure}>
+                    <video className={classes.itemWrapper} key={video.id}
+                           onContextMenu={() => this.handleVideoMedia(video.id)} controls>
+                      <source src={video.content}/>
+                    </video>
+                    <figcaption>Ajoutée le {video.createdAt}</figcaption>
+                  </figure>
+                </ListItem>
+              ))}
+            </List>
+          </Collapse>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  renderMenu() {
+    const {classes} = this.props;
+
+    return (
+      <div>
+        <Card className={classes.card}>
+          <CardContent>
+            <IconButton
+              color="accent"
+              onClick={() => this.takeAPhoto()}>
+              <AddAPhoto />
+            </IconButton>
+            <IconButton
+              color="accent"
+              onClick={() => this.addAPhoto()}>
+              <Photo />
+            </IconButton>
+            <IconButton
+              color="accent"
+              onClick={() => this.captureAudio()}>
+              <Mic />
+            </IconButton>
+            <IconButton
+              color="accent"
+              onClick={() => this.captureVideo()}>
+              <Videocam />
+            </IconButton>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   render() {
-    const {classes, session} = this.props;
+    const {classes, session: {title}} = this.props;
     const {isLoading, error} = this.state;
-    const {note, saveDisabled} = this.state;
-    const {photos, records, videos} = this.state;
+    const {cordova} = window;
 
     if (error) {
       return <p>{error.message}</p>;
@@ -385,171 +576,15 @@ export class SessionNote extends React.Component {
         <Card className={classes.card}>
           <CardContent>
             <Typography type="headline" component="h2">
-              {session.title}
+              {title}
             </Typography>
           </CardContent>
         </Card>
-        {window.cordova && (
-          <div>
-            <Card className={classes.card}>
-              <CardContent>
-                <IconButton
-                  color="accent"
-                  onClick={() => this.takeAPhoto()}>
-                  <AddAPhoto />
-                </IconButton>
-                <IconButton
-                  color="accent"
-                  onClick={() => this.addAPhoto()}>
-                  <Photo />
-                </IconButton>
-                <IconButton
-                  color="accent"
-                  onClick={() => this.captureAudio()}>
-                  <Mic />
-                </IconButton>
-                <IconButton
-                  color="accent"
-                  onClick={() => this.captureVideo()}>
-                  <Videocam />
-                </IconButton>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-        <Card className={classes.card}>
-          <CardContent>
-            <Typography type="subheading" component="h3" className={classes.cardMenu}>
-              Note
-              <IconButton
-                className={this.state.isNoteExpanded ? classes.expandOpen : classes.expand}
-                onClick={() => this.toggleMenu(ItemType.NOTE)}
-                aria-expanded={this.state.isNoteExpanded}
-                aria-label="Show more"
-              >
-                <ExpandMoreIcon />
-              </IconButton>
-            </Typography>
-            <Collapse in={this.state.isNoteExpanded} transitionDuration="auto">
-              <TextField
-                className={classes.input}
-                multiline={true}
-                margin="normal"
-                placeholder="Saisir une note"
-                value={note}
-                onChange={event => this.handleChanges(event)}
-              />
-              <Button
-                raised
-                disabled={saveDisabled}
-                color="accent"
-                className={classes.button}
-                onClick={() => this.handleSaveNote()}>
-                Sauvegarder
-              </Button>
-            </Collapse>
-          </CardContent>
-        </Card>
-        {window.cordova && photos.length > 0 && (
-          <Card className={classes.card}>
-            <CardContent>
-              <Typography type="subheading" component="h3" className={classes.cardMenu}>
-                Photos
-                <IconButton
-                  className={this.state.isPhotosExpanded ? classes.expandOpen : classes.expand}
-                  onClick={() => this.toggleMenu(ItemType.PHOTO)}
-                  aria-expanded={this.state.isPhotosExpanded}
-                  aria-label="Show more"
-                >
-                  <ExpandMoreIcon />
-                </IconButton>
-              </Typography>
-              <Collapse in={this.state.isPhotosExpanded} transitionDuration="auto">
-                <List>
-                  {photos.map((photo, index) => (
-                    <ListItem
-                      key={photo.id}>
-                      <figure className={classes.figure}>
-                        <Button key={photo.id} className={classes.itemWrapper}
-                                onContextMenu={() => this.handlePhotoMedia(photo.id)}>
-                          <img className={classes.img} alt={`n°${index}`}
-                               src={`data:image/png;base64,${photo.content}`}/>
-                        </Button>
-                        <figcaption>Ajoutée le {photo.createdAt}</figcaption>
-                      </figure>
-                    </ListItem>
-                  ))}
-                </List>
-              </Collapse>
-            </CardContent>
-          </Card>
-        )}
-        {window.cordova && records.length > 0 && (
-          <Card className={classes.card}>
-            <CardContent>
-              <Typography type="subheading" component="h3" className={classes.cardMenu}>
-                Enregistrements
-                <IconButton
-                  className={this.state.isRecordsExpanded ? classes.expandOpen : classes.expand}
-                  onClick={() => this.toggleMenu(ItemType.RECORD)}
-                  aria-expanded={this.state.isRecordsExpanded}
-                  aria-label="Show more"
-                >
-                  <ExpandMoreIcon />
-                </IconButton>
-              </Typography>
-              <Collapse in={this.state.isRecordsExpanded} transitionDuration="auto">
-                <List>
-                  {records.map((record, index) => (
-                    <ListItem
-                      key={record.id}>
-                      <figure className={classes.figure}>
-                        <audio className={classes.itemWrapper} key={record.id}
-                               onContextMenu={() => this.handleRecordMedia(record.id)} controls>
-                          <source src={record.content}/>
-                        </audio>
-                        <figcaption>Ajoutée le {record.createdAt}</figcaption>
-                      </figure>
-                    </ListItem>
-                  ))}
-                </List>
-              </Collapse>
-            </CardContent>
-          </Card>
-        )}
-        {window.cordova && videos.length > 0 && (
-          <Card className={classes.card}>
-            <CardContent>
-              <Typography type="subheading" component="h3" className={classes.cardMenu}>
-                Vidéos
-                <IconButton
-                  className={this.state.isVideosExpanded ? classes.expandOpen : classes.expand}
-                  onClick={() => this.toggleMenu(ItemType.VIDEO)}
-                  aria-expanded={this.state.isVideosExpanded}
-                  aria-label="Show more"
-                >
-                  <ExpandMoreIcon />
-                </IconButton>
-              </Typography>
-              <Collapse in={this.state.isVideosExpanded} transitionDuration="auto">
-                <List>
-                  {videos.map((video, index) => (
-                    <ListItem
-                      key={video.id}>
-                      <figure className={classes.figure}>
-                        <video className={classes.itemWrapper} key={video.id}
-                               onContextMenu={() => this.handleVideoMedia(video.id)} controls>
-                          <source src={video.content}/>
-                        </video>
-                        <figcaption>Ajoutée le {video.createdAt}</figcaption>
-                      </figure>
-                    </ListItem>
-                  ))}
-                </List>
-              </Collapse>
-            </CardContent>
-          </Card>
-        )}
+        {cordova && this.renderMenu()}
+        {this.renderNote()}
+        {cordova && this.renderPhotos()}
+        {cordova && this.renderRecords()}
+        {cordova && this.renderVideos()}
       </div>
     );
   }
