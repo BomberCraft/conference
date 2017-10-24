@@ -132,6 +132,13 @@ export class SessionNote extends React.Component {
   };
 
   handleSaveNote = () => {
+    if (!window.cordova) {
+      localStorage.setItem(this.props.session.id, this.state.note);
+      this.setState({saveDisabled: true});
+
+      return;
+    }
+
     saveNote(this.props.session, this.state.note)
       .then(resultSet => {
         if (resultSet.rowsAffected === 0) {

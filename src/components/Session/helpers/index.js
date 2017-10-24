@@ -70,13 +70,6 @@ export const loadMedia = (session, itemType) => new Promise((resolve, reject) =>
 });
 
 export const saveNote = (session, content) => new Promise((resolve, reject) => {
-  if (!window.cordova) {
-    localStorage.setItem(session.id, content);
-    resolve();
-
-    return;
-  }
-
   const db = window.sqlitePlugin.openDatabase(config.db);
 
   const onTransactionError = error => {
