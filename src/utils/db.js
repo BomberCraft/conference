@@ -90,7 +90,7 @@ const createDB = (transaction, doPurge) => {
   createTable(transaction);
 };
 
-const initDB = (doPurge = false) => new Promise((resolve, reject) => {
+export const initDB = (doPurge = false) => new Promise((resolve, reject) => {
   const db = window.sqlitePlugin.openDatabase(config.db);
 
   db.transaction(
@@ -100,4 +100,15 @@ const initDB = (doPurge = false) => new Promise((resolve, reject) => {
   );
 });
 
-export default initDB;
+export const getDB = () => window.sqlitePlugin.openDatabase(config.db);
+
+export const execQuery = (transaction, query, parameters) => new Promise((resolve, reject) => {
+  const onSuccess = (transaction, resultSet) => resolve(resultSet);
+
+  transaction.executeSql(
+    query,
+    parameters,
+    onSuccess,
+    (transaction, error) => reject(error)
+  );
+});

@@ -13,8 +13,8 @@ import Photo from 'material-ui-icons/Photo';
 import Mic from 'material-ui-icons/Mic';
 import Videocam from 'material-ui-icons/Videocam';
 import Camera from 'cordova-plugin-camera/www/CameraConstants';
-import {loadNote, saveNote, loadMedia, deleteMedia} from './helpers';
-import ItemType from './helpers/ItemType';
+import {loadNoteContent, saveNoteContent, loadMedia, deleteMedia} from './helpers';
+import MediaType from './helpers/MediaType';
 
 const styles = theme => ({
   card: {
@@ -78,15 +78,15 @@ export class SessionNote extends React.Component {
     }
 
     const loadMedias = [
-      ItemType.PHOTO,
-      ItemType.RECORD,
-      ItemType.VIDEO,
-    ].map(itemType => loadMedia(session.id, itemType));
+      MediaType.PHOTO,
+      MediaType.RECORD,
+      MediaType.VIDEO,
+    ].map(mediaType => loadMedia(session.id, mediaType));
 
-    loadNote(session.id)
-      .then(resultSet => this.handleNoteData(resultSet))
+    loadNoteContent(session.id)
+      .then(resultSet => this.onLoadNoteContent(resultSet))
       .then(() => Promise.all(loadMedias))
-      .then(data => this.handleMediasTypeData(data))
+      .then(data => this.onLoadMedias(data))
       .then(() => this.setState({isLoading: false}))
       .catch(error => {
         console.error('[SQLException] Fail to load note data:', error);
@@ -94,15 +94,15 @@ export class SessionNote extends React.Component {
       });
   }
 
-  handleNoteData(content) {
+  onLoadNoteContent(content) {
     this.setState({content});
   }
 
-  handleMediasTypeData(data) {
+  onLoadMedias(data) {
     const nextState = {};
 
-    data.forEach(({itemType, medias}) => {
-      const {stateKey} = itemType;
+    data.forEach(({mediaType, medias}) => {
+      const {stateKey} = mediaType;
 
       for (let i = 0; i < medias.length; i++) {
         nextState[stateKey] = [...(nextState[stateKey] || []), medias[i]];
@@ -112,12 +112,12 @@ export class SessionNote extends React.Component {
     this.setState(nextState);
   }
 
-  handleChanges = (event) => {
+  handleNoteContentChanges = event => {
     this.setState({content: event.target.value, saveDisabled: false});
   };
 
-  toggleMenu = (itemType) => {
-    this.setState({[itemType.stateMenuKey]: !this.state[itemType.stateMenuKey]});
+  toggleMenu = mediaType => {
+    this.setState({[mediaType.stateMenuKey]: !this.state[mediaType.stateMenuKey]});
   };
 
   handleSaveNote = () => {
@@ -128,7 +128,7 @@ export class SessionNote extends React.Component {
       return;
     }
 
-    saveNote(this.props.session.id, this.state.content)
+    saveNoteContent(this.props.session.id, this.state.content)
       .then(() => this.setState({saveDisabled: true}))
       .catch(error => {
         console.error('[SQLException]', error);
@@ -153,18 +153,18 @@ export class SessionNote extends React.Component {
     });
   };
 
-  getPicture = (cameraOptions) => {
-    const onCameraError = (message) => {
+  getPicture = cameraOptions => {
+    const onError = (message) => {
       console.error('[PictureException] Fail to add a photo:', message);
     };
 
-    navigator.camera.getPicture((imageData) => this.saveItem(ItemType.PHOTO, imageData), onCameraError, cameraOptions);
+    navigator.camera.getPicture(imageData => this.saveItem(MediaType.PHOTO, imageData), onError, cameraOptions);
   };
 
-  saveItem = (itemType, itemContent) => {
+  saveItem = (mediaType, itemContent) => {
     const db = window.sqlitePlugin.openDatabase({name: 'conference.db', location: 'default'});
 
-    const {stateKey, dbEntity, dbJoinEntity, dbJoinPrimaryKey} = itemType;
+    const {stateKey, dbEntity, dbJoinEntity, dbJoinPrimaryKey} = mediaType;
 
     const onTransactionError = (error) => {
       console.error('[TransactionException] (', stateKey, '):', error.message);
@@ -242,10 +242,10 @@ export class SessionNote extends React.Component {
     }, onTransactionError);
   };
 
-  handleDeleteMedia = (itemType, mediaId) => {
-    const {stateKey} = itemType;
+  handleDeleteMedia = (mediaType, mediaId) => {
+    const {stateKey} = mediaType;
 
-    deleteMedia(itemType, mediaId)
+    deleteMedia(mediaType, mediaId)
       .then(() => {
         const nextState = {[stateKey]: this.state[stateKey].filter(media => media.id !== mediaId)};
 
@@ -257,47 +257,47 @@ export class SessionNote extends React.Component {
       });
   };
 
-  captureAudio = () => this.capture(ItemType.RECORD);
+  captureAudio = () => this.capture(MediaType.RECORD);
 
-  captureVideo = () => this.capture(ItemType.VIDEO);
+  captureVideo = () => this.capture(MediaType.VIDEO);
 
-  capture = (itemType) => {
-    const onCaptureSuccess = (mediaFiles) => {
+  capture = mediaType => {
+    const onSuccess = (mediaFiles) => {
       for (let i = 0, len = mediaFiles.length; i < len; i += 1) {
         const path = mediaFiles[i].fullPath;
-        this.saveItem(itemType, path);
+        this.saveItem(mediaType, path);
       }
     };
 
-    const onCaptureError = (error) => {
+    const onError = (error) => {
       console.error('[CaptureExeption]', error);
     };
 
-    switch (itemType) {
-      case ItemType.RECORD:
-        navigator.device.capture.captureAudio(onCaptureSuccess, onCaptureError, {limit: 1});
+    switch (mediaType) {
+      case MediaType.RECORD:
+        navigator.device.capture.captureAudio(onSuccess, onError, {limit: 1});
         break;
-      case ItemType.VIDEO:
-        navigator.device.capture.captureVideo(onCaptureSuccess, onCaptureError, {limit: 1});
+      case MediaType.VIDEO:
+        navigator.device.capture.captureVideo(onSuccess, onError, {limit: 1});
         break;
       default:
     }
   };
 
   handlePhotoMedia = mediaId => {
-    this.handleMedia("Que faire de la photo ?", ItemType.PHOTO, mediaId);
+    this.handleMedia("Que faire de la photo ?", MediaType.PHOTO, mediaId);
   };
 
   handleRecordMedia = mediaId => {
-    this.handleMedia("Que faire de l'enregistrement ?", ItemType.RECORD, mediaId);
+    this.handleMedia("Que faire de l'enregistrement ?", MediaType.RECORD, mediaId);
   };
 
   handleVideoMedia = mediaId => {
-    this.handleMedia("Que faire de la video ?", ItemType.VIDEO, mediaId);
+    this.handleMedia("Que faire de la video ?", MediaType.VIDEO, mediaId);
   };
 
-  handleMedia = (title, itemType, mediaId) => {
-    const {stateKey} = itemType;
+  handleMedia = (title, mediaType, mediaId) => {
+    const {stateKey} = mediaType;
 
     const actionSheetButtons = [];
 
@@ -334,7 +334,7 @@ export class SessionNote extends React.Component {
 
     const callback = (buttonIndex) => {
       const media = this.state[stateKey].filter(item => item.id === mediaId)[0];
-      const file = (itemType === ItemType.PHOTO) ? `data:image/png;base64,${media.content}` : media.content;
+      const file = (mediaType === MediaType.PHOTO) ? `data:image/png;base64,${media.content}` : media.content;
 
       switch (buttonIndex) {
         case ActionSheetButtonsIndex.open:
@@ -357,7 +357,7 @@ export class SessionNote extends React.Component {
           window.plugins.socialsharing.shareWithOptions(shareOptions, onShareSuccess, onShareError);
           break;
         case ActionSheetButtonsIndex.delete:
-          this.handleDeleteMedia(itemType, mediaId);
+          this.handleDeleteMedia(mediaType, mediaId);
           break;
         default:
       }
@@ -377,7 +377,7 @@ export class SessionNote extends React.Component {
             Note
             <IconButton
               className={isNoteExpanded ? classes.expandOpen : classes.expand}
-              onClick={() => this.toggleMenu(ItemType.NOTE)}
+              onClick={() => this.toggleMenu(MediaType.NOTE)}
               aria-expanded={isNoteExpanded}
               aria-label="Show more"
             >
@@ -391,7 +391,7 @@ export class SessionNote extends React.Component {
               margin="normal"
               placeholder="Saisir une note"
               value={content}
-              onChange={event => this.handleChanges(event)}
+              onChange={event => this.handleNoteContentChanges(event)}
             />
             <Button
               raised
@@ -418,7 +418,7 @@ export class SessionNote extends React.Component {
             Photos
             <IconButton
               className={isPhotosExpanded ? classes.expandOpen : classes.expand}
-              onClick={() => this.toggleMenu(ItemType.PHOTO)}
+              onClick={() => this.toggleMenu(MediaType.PHOTO)}
               aria-expanded={isPhotosExpanded}
               aria-label="Show more"
             >
@@ -458,7 +458,7 @@ export class SessionNote extends React.Component {
             Enregistrements
             <IconButton
               className={isRecordsExpanded ? classes.expandOpen : classes.expand}
-              onClick={() => this.toggleMenu(ItemType.RECORD)}
+              onClick={() => this.toggleMenu(MediaType.RECORD)}
               aria-expanded={isRecordsExpanded}
               aria-label="Show more"
             >
@@ -497,7 +497,7 @@ export class SessionNote extends React.Component {
             Vidéos
             <IconButton
               className={isVideosExpanded ? classes.expandOpen : classes.expand}
-              onClick={() => this.toggleMenu(ItemType.VIDEO)}
+              onClick={() => this.toggleMenu(MediaType.VIDEO)}
               aria-expanded={isVideosExpanded}
               aria-label="Show more"
             >
@@ -588,7 +588,6 @@ export class SessionNote extends React.Component {
       </div>
     );
   }
-
 }
 
 export default withStyles(styles)(SessionNote);

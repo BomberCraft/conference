@@ -5,7 +5,7 @@ import CircularProgress from 'material-ui/Progress/CircularProgress';
 import {withStyles} from 'material-ui/styles';
 import PropTypes from 'prop-types';
 import Connection from 'cordova-plugin-network-information/www/Connection';
-import initDB from '../../utils/db';
+import {initDB} from '../../utils/db';
 import fetchData from '../../fetchData';
 import Header from '../Header';
 import Main from '../Main';

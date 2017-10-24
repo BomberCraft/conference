@@ -1,4 +1,4 @@
-const ItemType = {
+const MediaType = {
   NOTE: {
     stateKey: 'note',
     stateMenuKey: 'isNoteExpanded',
@@ -27,4 +27,4 @@ const ItemType = {
   },
 };
 
-export default ItemType;
+export default MediaType;

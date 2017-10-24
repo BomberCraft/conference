@@ -1,6 +1,6 @@
 import {denormalize} from 'normalizr';
 import {sessionSchema} from '../schema';
-import config from '../../../config';
+import { getDB, execQuery } from '../../../utils/db';
 
 export const getSession = (id, entities) => {
   return denormalize(id, sessionSchema, entities);
@@ -10,20 +10,7 @@ export const getSessions = (entities) => {
   return Object.values(entities.sessions);
 };
 
-const getDb = () => window.sqlitePlugin.openDatabase(config.db);
-
-const execQuery = (transaction, query, parameters) => new Promise((resolve, reject) => {
-  const onSuccess = (transaction, resultSet) => resolve(resultSet);
-
-  transaction.executeSql(
-    query,
-    parameters,
-    onSuccess,
-    (transaction, error) => reject(error)
-  );
-});
-
-export const loadNote = sessionId => new Promise((resolve, reject) => {
+export const loadNoteContent = sessionId => new Promise((resolve, reject) => {
   const selectTransaction = transaction => {
     const query = `
       SELECT content
@@ -44,14 +31,14 @@ export const loadNote = sessionId => new Promise((resolve, reject) => {
       .catch(error => reject(error));
   };
 
-  getDb().transaction(
+  getDB().transaction(
     selectTransaction,
     error => reject(error)
   );
 });
 
-export const loadMedia = (sessionId, itemType) => new Promise((resolve, reject) => {
-  const {dbEntity, dbJoinEntity, dbJoinPrimaryKey} = itemType;
+export const loadMedia = (sessionId, mediaType) => new Promise((resolve, reject) => {
+  const {dbEntity, dbJoinEntity, dbJoinPrimaryKey} = mediaType;
 
   const selectTransaction = transaction => {
     const query = `
@@ -79,7 +66,7 @@ export const loadMedia = (sessionId, itemType) => new Promise((resolve, reject) 
       }
 
       resolve({
-        itemType,
+        mediaType,
         medias,
       })
     };
@@ -89,13 +76,13 @@ export const loadMedia = (sessionId, itemType) => new Promise((resolve, reject) 
       .catch(error => reject(error));
   };
 
-  getDb().transaction(
+  getDB().transaction(
     selectTransaction,
     error => reject(error)
   );
 });
 
-export const saveNote = (sessionId, content) => new Promise((resolve, reject) => {
+export const saveNoteContent = (sessionId, content) => new Promise((resolve, reject) => {
   const upsertTransaction = transaction => {
     const query = `
       INSERT OR REPLACE
@@ -110,14 +97,14 @@ export const saveNote = (sessionId, content) => new Promise((resolve, reject) =>
       .catch(error => reject(error));
   };
 
-  getDb().transaction(
+  getDB().transaction(
     upsertTransaction,
     error => reject(error)
   );
 });
 
-export const deleteMedia = (itemType, mediaId) => new Promise((resolve, reject) => {
-  const {dbEntity} = itemType;
+export const deleteMedia = (mediaType, mediaId) => new Promise((resolve, reject) => {
+  const {dbEntity} = mediaType;
 
   const deleteTransaction = transaction => {
     const query = `
@@ -129,11 +116,11 @@ export const deleteMedia = (itemType, mediaId) => new Promise((resolve, reject) 
     const parameters = [mediaId];
 
     execQuery(transaction, query, parameters)
-    .then(resultSet => resolve())
-    .catch(error => reject(error));
+      .then(resultSet => resolve())
+      .catch(error => reject(error));
   };
 
-  getDb().transaction(
+  getDB().transaction(
     deleteTransaction,
     error => reject(error)
   );
