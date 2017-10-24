@@ -89,16 +89,13 @@ export class SessionNote extends React.Component {
       .then(data => this.handleMediasTypeData(data))
       .then(() => this.setState({isLoading: false}))
       .catch(error => {
-        console.error('[SQLException] Fail to load note data:', error.message);
+        console.error('[SQLException] Fail to load note data:', error);
+        this.setState({error});
       });
   }
 
-  handleNoteData(resultSet) {
-    if (resultSet.rows.length !== 0) {
-      this.setState({
-        note: resultSet.rows.item(0).content,
-      });
-    }
+  handleNoteData(content) {
+    this.setState({note: content});
   }
 
   handleMediasTypeData(data) {

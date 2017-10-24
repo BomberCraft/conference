@@ -11,20 +11,20 @@ export const getSessions = (entities) => {
 };
 
 const getDb = () => window.sqlitePlugin.openDatabase(config.db);
-const defaultTransactionError = error => Promise.reject(error);
+//const defaultTransactionError = error => Promise.reject(error);
 
-const execQuery = (transaction, query, parameters) => new Promise(resolve => {
+const execQuery = (transaction, query, parameters) => new Promise((resolve, reject) => {
   const onSuccess = (transaction, resultSet) => resolve(resultSet);
 
   transaction.executeSql(
     query,
     parameters,
     onSuccess,
-    defaultTransactionError
+    (transaction, error) => reject(error)
   );
 });
 
-export const loadNote = sessionId => new Promise(resolve => {
+export const loadNote = sessionId => new Promise((resolve, reject) => {
   const selectTransaction = transaction => {
     const query = `
       SELECT content
@@ -34,14 +34,22 @@ export const loadNote = sessionId => new Promise(resolve => {
 
     const parameters = [sessionId];
 
+    const onSuccess = resultSet => {
+      let content = '';
+      if (resultSet.rows.length !== 0) {
+        content = resultSet.rows.item(0).content;
+      }
+      resolve(content);
+    };
+
     execQuery(transaction, query, parameters)
-      .then(resultSet => resolve(resultSet))
-      .catch(defaultTransactionError);
+      .then(onSuccess)
+      .catch(error => reject(error));
   };
 
   getDb().transaction(
     selectTransaction,
-    defaultTransactionError
+    error => reject(error)
   );
 });
 
