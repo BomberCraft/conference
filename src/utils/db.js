@@ -1,5 +1,10 @@
 import config from '../config';
 
+/**
+ * Purge database
+ *
+ * @param transaction
+ */
 const purgeDB = transaction => {
   transaction.executeSql('DROP TABLE IF EXISTS noteVideo');
   transaction.executeSql('DROP TABLE IF EXISTS video');
@@ -10,6 +15,11 @@ const purgeDB = transaction => {
   transaction.executeSql('DROP TABLE IF EXISTS note');
 };
 
+/**
+ * Create table
+ *
+ * @param transaction
+ */
 const createTable = transaction => {
   // Note(id, content, createdAt)
   transaction.executeSql(`
@@ -85,11 +95,22 @@ const createTable = transaction => {
   `);
 };
 
+/**
+ * Create database
+ *
+ * @param transaction
+ * @param doPurge
+ */
 const createDB = (transaction, doPurge) => {
   doPurge && purgeDB(transaction);
   createTable(transaction);
 };
 
+/**
+ * Init database
+ *
+ * @param doPurge
+ */
 export const initDB = (doPurge = false) => new Promise((resolve, reject) => {
   const db = window.sqlitePlugin.openDatabase(config.db);
 
@@ -100,9 +121,19 @@ export const initDB = (doPurge = false) => new Promise((resolve, reject) => {
   );
 });
 
+/**
+ * Get database
+ */
 export const getDB = () => window.sqlitePlugin.openDatabase(config.db);
 
-export const execQuery = (transaction, query, parameters) => new Promise((resolve, reject) => {
+/**
+ * Execute query
+ *
+ * @param transaction
+ * @param query
+ * @param parameters
+ */
+export const executeQuery = (transaction, query, parameters) => new Promise((resolve, reject) => {
   const onSuccess = (transaction, resultSet) => resolve(resultSet);
 
   transaction.executeSql(

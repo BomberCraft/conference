@@ -13,7 +13,7 @@ import Photo from 'material-ui-icons/Photo';
 import Mic from 'material-ui-icons/Mic';
 import Videocam from 'material-ui-icons/Videocam';
 import Camera from 'cordova-plugin-camera/www/CameraConstants';
-import {loadNoteContent, saveNoteContent, loadMedia, deleteMedia} from './helpers';
+import {loadNoteContent, saveNoteContent, loadMedia, saveMedia, deleteMedia} from './helpers';
 import MediaType from './helpers/MediaType';
 
 const styles = theme => ({
@@ -116,10 +116,6 @@ export class SessionNote extends React.Component {
     this.setState({content: event.target.value, saveDisabled: false});
   };
 
-  toggleMenu = mediaType => {
-    this.setState({[mediaType.stateMenuKey]: !this.state[mediaType.stateMenuKey]});
-  };
-
   handleSaveNote = () => {
     if (!window.cordova) {
       localStorage.setItem(this.props.session.id, this.state.content);
@@ -136,112 +132,6 @@ export class SessionNote extends React.Component {
       });
   };
 
-  addAPhoto = () => {
-    this.getPicture({
-      sourceType: Camera.PictureSourceType.PHOTOLIBRARY,
-      mediaType: Camera.MediaType.PICTURE,
-      destinationType: Camera.DestinationType.DATA_URL,
-      encodingType: Camera.EncodingType.PNG,
-    });
-  };
-
-  takeAPhoto = () => {
-    this.getPicture({
-      sourceType: Camera.PictureSourceType.CAMERA,
-      destinationType: Camera.DestinationType.DATA_URL,
-      encodingType: Camera.EncodingType.PNG,
-    });
-  };
-
-  getPicture = cameraOptions => {
-    const onError = (message) => {
-      console.error('[PictureException] Fail to add a photo:', message);
-    };
-
-    navigator.camera.getPicture(imageData => this.saveItem(MediaType.PHOTO, imageData), onError, cameraOptions);
-  };
-
-  saveItem = (mediaType, itemContent) => {
-    const db = window.sqlitePlugin.openDatabase({name: 'conference.db', location: 'default'});
-
-    const {stateKey, dbEntity, dbJoinEntity, dbJoinPrimaryKey} = mediaType;
-
-    const onTransactionError = (error) => {
-      console.error('[TransactionException] (', stateKey, '):', error.message);
-    };
-
-    db.transaction(tx => {
-      const query = `INSERT INTO ${dbEntity} (content) VALUES (?)`;
-      const parameters = [itemContent];
-
-      const onSqlSuccess = (tx, rs) => {
-        if (rs.rowsAffected === 0) {
-          console.error('[NotModifiedException] Fail to save', stateKey);
-          return;
-        }
-
-        const childQuery = `INSERT INTO ${dbJoinEntity} (noteId, ${dbJoinPrimaryKey}) VALUES (?, ?)`;
-        const childParameters = [this.props.session.id, rs.insertId];
-
-        const onChildSqlSuccess = (tx, childRs) => {
-          if (childRs.rowsAffected === 0) {
-            console.error('[NotModifiedException] Fail to save', stateKey);
-            return;
-          }
-
-          const finalChildQuery = `SELECT id, content, datetime(createdAt, 'localtime') AS createdAt FROM ${dbEntity} WHERE id = ?`;
-          const finalChildParameters = [rs.insertId];
-
-          const onFinalChildSqlSuccess = (tx, finalChildRs) => {
-            if (finalChildRs.rows.length === 0) {
-              console.error('[NotModifiedException] Fail to select last', stateKey);
-              return;
-            }
-
-            const item = finalChildRs.rows.item(0);
-            this.setState({
-              [stateKey]: [...this.state[stateKey], {
-                id: item.id,
-                content: item.content,
-                createdAt: item.createdAt,
-              }]
-            });
-          };
-          const onFinalChildSqlError = (tx, error) => {
-            console.error('[ChildSQLException] (', stateKey, '):', error.message);
-          };
-
-          tx.executeSql(
-            finalChildQuery,
-            finalChildParameters,
-            onFinalChildSqlSuccess,
-            onFinalChildSqlError
-          );
-        };
-        const onChildSqlError = (tx, error) => {
-          console.error('[ChildSQLException] (', stateKey, '):', error.message);
-        };
-
-        tx.executeSql(
-          childQuery,
-          childParameters,
-          onChildSqlSuccess,
-          onChildSqlError
-        );
-      };
-      const onSqlError = (tx, error) => {
-        console.error('[SQLException] (', stateKey, '):', error.message);
-      };
-
-      tx.executeSql(
-        query,
-        parameters,
-        onSqlSuccess,
-        onSqlError
-      );
-    }, onTransactionError);
-  };
-
   handleDeleteMedia = (mediaType, mediaId) => {
     const {stateKey} = mediaType;
 
@@ -255,33 +145,6 @@ export class SessionNote extends React.Component {
         console.error('[SQLException] (', stateKey, '):', error);
         // @todo toast error
       });
-  };
-
-  captureAudio = () => this.capture(MediaType.RECORD);
-
-  captureVideo = () => this.capture(MediaType.VIDEO);
-
-  capture = mediaType => {
-    const onSuccess = (mediaFiles) => {
-      for (let i = 0, len = mediaFiles.length; i < len; i += 1) {
-        const path = mediaFiles[i].fullPath;
-        this.saveItem(mediaType, path);
-      }
-    };
-
-    const onError = (error) => {
-      console.error('[CaptureExeption]', error);
-    };
-
-    switch (mediaType) {
-      case MediaType.RECORD:
-        navigator.device.capture.captureAudio(onSuccess, onError, {limit: 1});
-        break;
-      case MediaType.VIDEO:
-        navigator.device.capture.captureVideo(onSuccess, onError, {limit: 1});
-        break;
-      default:
-    }
   };
 
   handlePhotoMedia = mediaId => {
@@ -323,7 +186,7 @@ export class SessionNote extends React.Component {
 
     const actionSheetOptions = {
       androidTheme: window.plugins.actionsheet.ANDROID_THEMES.THEME_DEVICE_DEFAULT_LIGHT,
-      title: title,
+      title,
       buttonLabels: actionSheetButtons,
       androidEnableCancelButton: true,
       winphoneEnableCancelButton: true,
@@ -332,11 +195,11 @@ export class SessionNote extends React.Component {
       destructiveButtonLast: true,
     };
 
-    const callback = (buttonIndex) => {
+    const onContextMenuClick = index => {
       const media = this.state[stateKey].filter(item => item.id === mediaId)[0];
       const file = (mediaType === MediaType.PHOTO) ? `data:image/png;base64,${media.content}` : media.content;
 
-      switch (buttonIndex) {
+      switch (index) {
         case ActionSheetButtonsIndex.open:
           const onOpenError = code => {
             (code === 1) && console.error('[OpenException] No file handler found');
@@ -348,8 +211,7 @@ export class SessionNote extends React.Component {
             files: [file],
           };
 
-          const onShareSuccess = (result) => {
-          };
+          const onShareSuccess = (result) => {};
           const onShareError = (msg) => {
             console.error("[ShareException]", msg);
           };
@@ -363,7 +225,76 @@ export class SessionNote extends React.Component {
       }
     };
 
-    window.plugins.actionsheet.show(actionSheetOptions, callback);
+    window.plugins.actionsheet.show(actionSheetOptions, onContextMenuClick);
+  };
+
+  handleSaveMedia = (mediaType, content) => {
+    const {stateKey} = mediaType;
+
+    saveMedia(mediaType, this.props.session.id, content)
+      .then(media => {
+        const nextMedias = [...this.state[stateKey], media];
+
+        this.setState({
+          [stateKey]: nextMedias,
+        });
+      })
+      .catch(error => {
+        console.error('[SQLException]', error);
+        // @todo toast error
+      });
+  };
+
+  toggleMenu = mediaType => {
+    this.setState({[mediaType.stateMenuKey]: !this.state[mediaType.stateMenuKey]});
+  };
+
+  addAPhoto = () => this.getPicture({
+    sourceType: Camera.PictureSourceType.PHOTOLIBRARY,
+    mediaType: Camera.MediaType.PICTURE,
+    destinationType: Camera.DestinationType.DATA_URL,
+    encodingType: Camera.EncodingType.PNG,
+  });
+
+  takeAPhoto = () => this.getPicture({
+    sourceType: Camera.PictureSourceType.CAMERA,
+    destinationType: Camera.DestinationType.DATA_URL,
+    encodingType: Camera.EncodingType.PNG,
+  });
+
+  getPicture = options => {
+    const onError = message => {
+      console.error('[PictureException] Fail to add a photo:', message);
+    };
+
+    navigator.camera.getPicture(data => this.handleSaveMedia(MediaType.PHOTO, data), onError, options);
+  };
+
+  captureAudio = () => this.capture(MediaType.RECORD);
+
+  captureVideo = () => this.capture(MediaType.VIDEO);
+
+  capture = mediaType => {
+    const onSuccess = medias => {
+      for (let i = 0, len = medias.length; i < len; i += 1) {
+        const path = medias[i].fullPath;
+        this.handleSaveMedia(mediaType, path);
+      }
+    };
+
+    const onError = error => {
+      console.error('[CaptureExeption]', error);
+    };
+
+    switch (mediaType) {
+      case MediaType.RECORD:
+        navigator.device.capture.captureAudio(onSuccess, onError, {limit: 1});
+        break;
+      case MediaType.VIDEO:
+        navigator.device.capture.captureVideo(onSuccess, onError, {limit: 1});
+        break;
+      default:
+    }
   };
 
   renderNote() {
