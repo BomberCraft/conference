@@ -26,7 +26,7 @@ export const getSpeakers = entities => {
 };
 
 export const findContacts = speaker => new Promise((resolve, reject) => {
-  const { contacts } = navigator;
+  const {contacts} = navigator;
 
   const searchParams = new ContactFindOptions();
   searchParams.filter = speaker.name;
@@ -46,7 +46,7 @@ export const findContacts = speaker => new Promise((resolve, reject) => {
   contacts.find(searchFields, onSuccess, onError, searchParams);
 });
 
-export const createContact = speaker => new Promise(resolve => {
+export const createContact = speaker => new Promise((resolve, reject) => {
   const socials = speaker.socials || [];
   const urls = socials.map((social, index) => new ContactField(social.name, social.link, 0 === index));
 
@@ -64,14 +64,18 @@ export const createContact = speaker => new Promise(resolve => {
   });
 
   const onSuccess = contact => resolve(contact);
-  const onError = error => console.error('[SaveContactException]', error);
+  const onError = error => reject(error);
 
   contact.save(onSuccess, onError);
 });
 
-export const removeContact = contact => new Promise(resolve => {
+export const removeContact = contact => new Promise((resolve, reject) => {
   const onSuccess = () => resolve(true);
-  const onError = error => console.error('[RemoveContactException]', error);
+  const onError = error => reject(error);
 
-  contact.remove(onSuccess, onError);
+  if (contact) {
+    contact.remove(onSuccess, onError);
+  } else {
+    onSuccess();
+  }
 });

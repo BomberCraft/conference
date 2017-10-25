@@ -6,7 +6,8 @@ import Typography from 'material-ui/Typography';
 import {withStyles} from 'material-ui/styles';
 import config from '../../config';
 import SessionList from '../Session/SessionList';
-import { findContacts, createContact, removeContact } from './helpers';
+import {createContact, findContacts, removeContact} from './helpers';
+import {showToast} from '../../utils/toast';
 
 const styles = {
   card: {
@@ -61,19 +62,38 @@ export class SpeakerDetail extends React.Component {
 
   manageContact = checked => {
     if (checked) {
-      createContact(this.props.speaker)
-        .then(contact => this.setState({
+      const onCreateSuccess = contact => {
+        showToast('Présentateur ajouté aux contacts');
+        this.setState({
           isInContacts: true,
           contact,
-        }));
-    } else {
-      const { contact } = this.state;
+        });
+      };
 
-      contact && removeContact(contact)
-        .then(() => this.setState({
+      const onCreateError = error => {
+        showToast('Erreur lors de l\'ajout aux contacts');
+        console.error('[AddContactException]', error);
+      };
+
+      createContact(this.props.speaker)
+        .then(onCreateSuccess)
+        .catch(onCreateError);
+    } else {
+      const onRemoveSuccess = () => {
+        showToast('Présentateur supprimé des contacts');
+        this.setState({
           isInContacts: false,
           contact: null,
-        }));
+        });
+      };
+      const onRemoveError = error => {
+        showToast('Erreur lors de la suppression aux contacts');
+        console.error('[RemoveContactException]', error);
+      };
+
+      removeContact(this.state.contact)
+        .then(onRemoveSuccess)
+        .catch(onRemoveError);
     }
   };
 
