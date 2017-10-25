@@ -310,8 +310,7 @@ export class SessionNote extends React.Component {
               className={isNoteExpanded ? classes.expandOpen : classes.expand}
               onClick={() => this.toggleMenu(MediaType.NOTE)}
               aria-expanded={isNoteExpanded}
-              aria-label="Show more"
-            >
+              aria-label="Show more">
               <ExpandMoreIcon />
             </IconButton>
           </Typography>
@@ -351,20 +350,17 @@ export class SessionNote extends React.Component {
               className={isPhotosExpanded ? classes.expandOpen : classes.expand}
               onClick={() => this.toggleMenu(MediaType.PHOTO)}
               aria-expanded={isPhotosExpanded}
-              aria-label="Show more"
-            >
+              aria-label="Show more">
               <ExpandMoreIcon />
             </IconButton>
           </Typography>
           <Collapse in={isPhotosExpanded} transitionDuration="auto">
             <List>
               {photos.map((photo, index) => (
-                <ListItem
-                  key={photo.id}>
+                <ListItem key={photo.id}>
                   <figure className={classes.figure}>
-                    <Button key={photo.id} className={classes.itemWrapper}
-                            onContextMenu={() => this.handlePhotoMedia(photo.id)}>
-                      <img className={classes.img} alt={`n°${index}`}
+                    <Button className={classes.itemWrapper} onContextMenu={() => this.handlePhotoMedia(photo.id)}>
+                      <img className={classes.img} alt={`n°${index + 1}`}
                            src={`data:image/png;base64,${photo.content}`}/>
                     </Button>
                     <figcaption>Ajoutée le {photo.createdAt}</figcaption>
@@ -391,22 +387,21 @@ export class SessionNote extends React.Component {
               className={isRecordsExpanded ? classes.expandOpen : classes.expand}
               onClick={() => this.toggleMenu(MediaType.RECORD)}
               aria-expanded={isRecordsExpanded}
-              aria-label="Show more"
-            >
+              aria-label="Show more">
               <ExpandMoreIcon />
             </IconButton>
           </Typography>
           <Collapse in={isRecordsExpanded} transitionDuration="auto">
             <List>
-              {records.map((record, index) => (
-                <ListItem
-                  key={record.id}>
+              {records.map(record => (
+                <ListItem key={record.id}>
                   <figure className={classes.figure}>
-                    <audio className={classes.itemWrapper} key={record.id}
-                           onContextMenu={() => this.handleRecordMedia(record.id)} controls>
+                    <audio controls
+                           className={classes.itemWrapper}
+                           onContextMenu={() => this.handleRecordMedia(record.id)}>
                       <source src={record.content}/>
                     </audio>
-                    <figcaption>Ajoutée le {record.createdAt}</figcaption>
+                    <figcaption>Ajouté le {record.createdAt}</figcaption>
                   </figure>
                 </ListItem>
               ))}
@@ -430,19 +425,18 @@ export class SessionNote extends React.Component {
               className={isVideosExpanded ? classes.expandOpen : classes.expand}
               onClick={() => this.toggleMenu(MediaType.VIDEO)}
               aria-expanded={isVideosExpanded}
-              aria-label="Show more"
-            >
+              aria-label="Show more">
               <ExpandMoreIcon />
             </IconButton>
           </Typography>
           <Collapse in={isVideosExpanded} transitionDuration="auto">
             <List>
-              {videos.map((video, index) => (
-                <ListItem
-                  key={video.id}>
+              {videos.map(video => (
+                <ListItem key={video.id}>
                   <figure className={classes.figure}>
-                    <video className={classes.itemWrapper} key={video.id}
-                           onContextMenu={() => this.handleVideoMedia(video.id)} controls>
+                    <video controls
+                           className={classes.itemWrapper}
+                           onContextMenu={() => this.handleVideoMedia(video.id)}>
                       <source src={video.content}/>
                     </video>
                     <figcaption>Ajoutée le {video.createdAt}</figcaption>
