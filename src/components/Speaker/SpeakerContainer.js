@@ -43,7 +43,7 @@ export class SpeakerContainer extends React.Component {
           let speakerList = speakers;
 
           if (search) {
-            const speakerFilter = speaker => speaker.name.toLowerCase().indexOf(search) !== -1;
+            const speakerFilter = speaker => speaker.name.toLowerCase().indexOf(search.toLowerCase()) !== -1;
 
             speakerList = speakerList.filter(speakerFilter);
           }
