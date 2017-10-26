@@ -7,6 +7,8 @@ import Card, {CardContent} from 'material-ui/Card';
 import Typography from 'material-ui/Typography';
 import SpeakerList from '../Speaker/SpeakerList';
 import {withStyles} from 'material-ui/styles';
+import * as Difficulty from './helpers/Difficulty';
+import WhatshotIcon from 'material-ui-icons/Whatshot';
 
 const styles = {
   card: {
@@ -22,7 +24,7 @@ const styles = {
 
 const SessionNote = props => {
   const {classes, history, location, session} = props;
-  const {title, description, speakers} = session;
+  const {title, description, speakers, complexity} = session;
 
   const markedDescription = description && marked(description);
 
@@ -32,6 +34,13 @@ const SessionNote = props => {
         <Typography type="headline" component="h2">
           {title}
         </Typography>
+        {Difficulty.valueOf(complexity) && (
+          <div>
+            <WhatshotIcon color={Difficulty.checkDifficulty(complexity, Difficulty.BEGINNER)}/>
+            <WhatshotIcon color={Difficulty.checkDifficulty(complexity, Difficulty.INTERMEDIATE)}/>
+            <WhatshotIcon color={Difficulty.checkDifficulty(complexity, Difficulty.EXPERT)}/>
+          </div>
+        )}
         <Typography component="div">
           <p dangerouslySetInnerHTML={{__html: markedDescription}}/>
         </Typography>
