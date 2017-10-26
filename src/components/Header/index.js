@@ -127,6 +127,7 @@ class Header extends React.Component {
           open={this.state.open}
           onRequestClose={this.closeMenu}
         >
+          <MenuItem onClick={() => this.navigate('/')}>Home</MenuItem>
           <MenuItem onClick={() => this.navigate('/sessions')}>Sessions</MenuItem>
           <MenuItem onClick={() => this.navigate('/speakers')}>Présentateurs</MenuItem>
           {window.cordova && <MenuItem onClick={() => this.navigate('/device')}>Téléphone</MenuItem>}
