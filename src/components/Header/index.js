@@ -80,6 +80,20 @@ class Header extends React.Component {
             </Typography>
           </div>
         )}/>
+        <Route path='/partners' render={props => (
+          <div className={classes.title}>
+            <IconButton
+              color="contrast"
+              onClick={() => this.navigateBack('/partners')}>
+              <ArrowBack/>
+            </IconButton>
+            <Typography
+              type="title"
+              color="inherit">
+              Sponsors
+            </Typography>
+          </div>
+        )}/>
         {window.cordova && <Route path='/device' render={props => (
           <div className={classes.title}>
             <IconButton
@@ -130,6 +144,7 @@ class Header extends React.Component {
           <MenuItem onClick={() => this.navigate('/')}>Home</MenuItem>
           <MenuItem onClick={() => this.navigate('/sessions')}>Sessions</MenuItem>
           <MenuItem onClick={() => this.navigate('/speakers')}>Présentateurs</MenuItem>
+          <MenuItem onClick={() => this.navigate('/partners')}>Sponsors</MenuItem>
           {window.cordova && <MenuItem onClick={() => this.navigate('/device')}>Téléphone</MenuItem>}
         </Menu>
       </div>
