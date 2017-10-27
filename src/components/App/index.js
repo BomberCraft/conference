@@ -98,7 +98,7 @@ export class App extends React.Component {
   handleData(entities) {
     setTimeout(() => {
       this.setState({entities, isLoading: false});
-      this.props.history.replace('/');
+      this.props.history.length === 1 && this.props.history.replace('/');
     }, 800);
   }
 
