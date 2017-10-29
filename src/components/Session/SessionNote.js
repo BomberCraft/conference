@@ -15,6 +15,8 @@ import Videocam from 'material-ui-icons/Videocam';
 import Camera from 'cordova-plugin-camera/www/CameraConstants';
 import {loadNoteContent, saveNoteContent, loadMedia, saveMedia, deleteMedia} from './helpers';
 import MediaType from './helpers/MediaType';
+import {showToast} from '../../utils/toast';
+import * as CaptureError from 'cordova-plugin-media-capture/www/CaptureError';
 
 const styles = theme => ({
   card: {
@@ -127,8 +129,8 @@ export class SessionNote extends React.Component {
     saveNoteContent(this.props.session.id, this.state.content)
       .then(() => this.setState({saveDisabled: true}))
       .catch(error => {
-        console.error('[SQLException]', error);
-        // @todo toast error
+        showToast(`Erreur lors de l'enregistrement de la note`);
+        console.error('[SaveNoteException]', error);
       });
   };
 
@@ -137,13 +139,14 @@ export class SessionNote extends React.Component {
 
     deleteMedia(mediaType, mediaId)
       .then(() => {
+        showToast(`Média supprimé avec succès`);
         const nextState = {[stateKey]: this.state[stateKey].filter(media => media.id !== mediaId)};
 
         this.setState(nextState);
       })
       .catch(error => {
-        console.error('[SQLException] (', stateKey, '):', error);
-        // @todo toast error
+        showToast('Erreur lors de la suppression du média');
+        console.error('[DeleteMediaException] (', stateKey, '):', error);
       });
   };
 
@@ -156,7 +159,7 @@ export class SessionNote extends React.Component {
   };
 
   handleVideoMedia = mediaId => {
-    this.handleMedia("Que faire de la video ?", MediaType.VIDEO, mediaId);
+    this.handleMedia("Que faire de la vidéo ?", MediaType.VIDEO, mediaId);
   };
 
   handleMedia = (title, mediaType, mediaId) => {
@@ -202,7 +205,10 @@ export class SessionNote extends React.Component {
       switch (index) {
         case ActionSheetButtonsIndex.open:
           const onOpenError = code => {
-            (code === 1) && console.error('[OpenException] No file handler found');
+            if (code === 1) {
+              showToast('Aucune application disponible pour ouvrir ce média');
+              console.error('[OpenMediaException] No file handler found');
+            }
           };
           window.cordova.plugins.disusered.open(file, null, onOpenError);
           break;
@@ -211,9 +217,11 @@ export class SessionNote extends React.Component {
             files: [file],
           };
 
-          const onShareSuccess = (result) => {};
+          const onShareSuccess = (result) => {
+          };
           const onShareError = (msg) => {
-            console.error("[ShareException]", msg);
+            showToast('Erreur lors du partage du média');
+            console.error("[ShareMediaException]", msg);
           };
 
           window.plugins.socialsharing.shareWithOptions(shareOptions, onShareSuccess, onShareError);
@@ -240,8 +248,8 @@ export class SessionNote extends React.Component {
         });
       })
       .catch(error => {
-        console.error('[SQLException]', error);
-        // @todo toast error
+        showToast('Erreur lors de la sauvegarde du média');
+        console.error('[SaveMediaException]', error);
       });
   };
 
@@ -264,7 +272,8 @@ export class SessionNote extends React.Component {
 
   getPicture = options => {
     const onError = message => {
-      console.error('[PictureException] Fail to add a photo:', message);
+      showToast('Erreur lors de la récupération de la photo');
+      console.error('[GetPictureException]', message);
     };
 
     navigator.camera.getPicture(data => this.handleSaveMedia(MediaType.PHOTO, data), onError, options);
@@ -283,7 +292,20 @@ export class SessionNote extends React.Component {
     };
 
     const onError = error => {
-      console.error('[CaptureExeption]', error);
+      console.error('[CaptureMediaExeption]', error, error.code);
+      switch (error.code) {
+        case CaptureError.CAPTURE_NO_MEDIA_FILES:
+          break;
+        case CaptureError.CAPTURE_NOT_SUPPORTED:
+          showToast('Aucune application disponible pour effectuer cette action');
+          break;
+        case CaptureError.CAPTURE_INTERNAL_ERR
+        | CaptureError.CAPTURE_APPLICATION_BUSY
+        | CaptureError.CAPTURE_INVALID_ARGUMENT
+        | CaptureError.CAPTURE_PERMISSION_DENIED:
+        default:
+          showToast('Erreur lors de la capture du média');
+      }
     };
 
     switch (mediaType) {
@@ -342,36 +364,36 @@ export class SessionNote extends React.Component {
     const {photos, isPhotosExpanded} = this.state;
 
     return photos.length > 0 && (
-      <Card className={classes.card}>
-        <CardContent>
-          <Typography type="subheading" component="h3" className={classes.cardMenu}>
-            Photos
-            <IconButton
-              className={isPhotosExpanded ? classes.expandOpen : classes.expand}
-              onClick={() => this.toggleMenu(MediaType.PHOTO)}
-              aria-expanded={isPhotosExpanded}
-              aria-label="Show more">
-              <ExpandMoreIcon />
-            </IconButton>
-          </Typography>
-          <Collapse in={isPhotosExpanded} transitionDuration="auto">
-            <List>
-              {photos.map((photo, index) => (
-                <ListItem key={photo.id}>
-                  <figure className={classes.figure}>
-                    <Button className={classes.itemWrapper} onContextMenu={() => this.handlePhotoMedia(photo.id)}>
-                      <img className={classes.img} alt={`n°${index + 1}`}
-                           src={`data:image/png;base64,${photo.content}`}/>
-                    </Button>
-                    <figcaption>Ajoutée le {photo.createdAt}</figcaption>
-                  </figure>
-                </ListItem>
-              ))}
-            </List>
-          </Collapse>
-        </CardContent>
-      </Card>
-    )
+        <Card className={classes.card}>
+          <CardContent>
+            <Typography type="subheading" component="h3" className={classes.cardMenu}>
+              Photos
+              <IconButton
+                className={isPhotosExpanded ? classes.expandOpen : classes.expand}
+                onClick={() => this.toggleMenu(MediaType.PHOTO)}
+                aria-expanded={isPhotosExpanded}
+                aria-label="Show more">
+                <ExpandMoreIcon />
+              </IconButton>
+            </Typography>
+            <Collapse in={isPhotosExpanded} transitionDuration="auto">
+              <List>
+                {photos.map((photo, index) => (
+                  <ListItem key={photo.id}>
+                    <figure className={classes.figure}>
+                      <Button className={classes.itemWrapper} onContextMenu={() => this.handlePhotoMedia(photo.id)}>
+                        <img className={classes.img} alt={`n°${index + 1}`}
+                             src={`data:image/png;base64,${photo.content}`}/>
+                      </Button>
+                      <figcaption>Ajoutée le {photo.createdAt}</figcaption>
+                    </figure>
+                  </ListItem>
+                ))}
+              </List>
+            </Collapse>
+          </CardContent>
+        </Card>
+      )
   }
 
   renderRecords() {
@@ -379,37 +401,37 @@ export class SessionNote extends React.Component {
     const {records, isRecordsExpanded} = this.state;
 
     return records.length > 0 && (
-      <Card className={classes.card}>
-        <CardContent>
-          <Typography type="subheading" component="h3" className={classes.cardMenu}>
-            Enregistrements
-            <IconButton
-              className={isRecordsExpanded ? classes.expandOpen : classes.expand}
-              onClick={() => this.toggleMenu(MediaType.RECORD)}
-              aria-expanded={isRecordsExpanded}
-              aria-label="Show more">
-              <ExpandMoreIcon />
-            </IconButton>
-          </Typography>
-          <Collapse in={isRecordsExpanded} transitionDuration="auto">
-            <List>
-              {records.map(record => (
-                <ListItem key={record.id}>
-                  <figure className={classes.figure}>
-                    <audio controls
-                           className={classes.itemWrapper}
-                           onContextMenu={() => this.handleRecordMedia(record.id)}>
-                      <source src={record.content}/>
-                    </audio>
-                    <figcaption>Ajouté le {record.createdAt}</figcaption>
-                  </figure>
-                </ListItem>
-              ))}
-            </List>
-          </Collapse>
-        </CardContent>
-      </Card>
-    )
+        <Card className={classes.card}>
+          <CardContent>
+            <Typography type="subheading" component="h3" className={classes.cardMenu}>
+              Enregistrements
+              <IconButton
+                className={isRecordsExpanded ? classes.expandOpen : classes.expand}
+                onClick={() => this.toggleMenu(MediaType.RECORD)}
+                aria-expanded={isRecordsExpanded}
+                aria-label="Show more">
+                <ExpandMoreIcon />
+              </IconButton>
+            </Typography>
+            <Collapse in={isRecordsExpanded} transitionDuration="auto">
+              <List>
+                {records.map(record => (
+                  <ListItem key={record.id}>
+                    <figure className={classes.figure}>
+                      <audio controls
+                             className={classes.itemWrapper}
+                             onContextMenu={() => this.handleRecordMedia(record.id)}>
+                        <source src={record.content}/>
+                      </audio>
+                      <figcaption>Ajouté le {record.createdAt}</figcaption>
+                    </figure>
+                  </ListItem>
+                ))}
+              </List>
+            </Collapse>
+          </CardContent>
+        </Card>
+      )
   }
 
   renderVideos() {
@@ -417,37 +439,37 @@ export class SessionNote extends React.Component {
     const {videos, isVideosExpanded} = this.state;
 
     return videos.length > 0 && (
-      <Card className={classes.card}>
-        <CardContent>
-          <Typography type="subheading" component="h3" className={classes.cardMenu}>
-            Vidéos
-            <IconButton
-              className={isVideosExpanded ? classes.expandOpen : classes.expand}
-              onClick={() => this.toggleMenu(MediaType.VIDEO)}
-              aria-expanded={isVideosExpanded}
-              aria-label="Show more">
-              <ExpandMoreIcon />
-            </IconButton>
-          </Typography>
-          <Collapse in={isVideosExpanded} transitionDuration="auto">
-            <List>
-              {videos.map(video => (
-                <ListItem key={video.id}>
-                  <figure className={classes.figure}>
-                    <video controls
-                           className={classes.itemWrapper}
-                           onContextMenu={() => this.handleVideoMedia(video.id)}>
-                      <source src={video.content}/>
-                    </video>
-                    <figcaption>Ajoutée le {video.createdAt}</figcaption>
-                  </figure>
-                </ListItem>
-              ))}
-            </List>
-          </Collapse>
-        </CardContent>
-      </Card>
-    )
+        <Card className={classes.card}>
+          <CardContent>
+            <Typography type="subheading" component="h3" className={classes.cardMenu}>
+              Vidéos
+              <IconButton
+                className={isVideosExpanded ? classes.expandOpen : classes.expand}
+                onClick={() => this.toggleMenu(MediaType.VIDEO)}
+                aria-expanded={isVideosExpanded}
+                aria-label="Show more">
+                <ExpandMoreIcon />
+              </IconButton>
+            </Typography>
+            <Collapse in={isVideosExpanded} transitionDuration="auto">
+              <List>
+                {videos.map(video => (
+                  <ListItem key={video.id}>
+                    <figure className={classes.figure}>
+                      <video controls
+                             className={classes.itemWrapper}
+                             onContextMenu={() => this.handleVideoMedia(video.id)}>
+                        <source src={video.content}/>
+                      </video>
+                      <figcaption>Ajoutée le {video.createdAt}</figcaption>
+                    </figure>
+                  </ListItem>
+                ))}
+              </List>
+            </Collapse>
+          </CardContent>
+        </Card>
+      )
   }
 
   renderMenu() {
@@ -489,7 +511,7 @@ export class SessionNote extends React.Component {
     const {cordova} = window;
 
     if (error) {
-      return <p>{error.message}</p>;
+      return null;
     }
 
     if (isLoading) {

@@ -71,7 +71,7 @@ export class SpeakerDetail extends React.Component {
       };
 
       const onCreateError = error => {
-        showToast('Erreur lors de l\'ajout aux contacts');
+        showToast(`Erreur lors de l'ajout du contact`);
         console.error('[AddContactException]', error);
       };
 
@@ -87,7 +87,7 @@ export class SpeakerDetail extends React.Component {
         });
       };
       const onRemoveError = error => {
-        showToast('Erreur lors de la suppression aux contacts');
+        showToast('Erreur lors de la suppression du contact');
         console.error('[RemoveContactException]', error);
       };
 
@@ -103,7 +103,7 @@ export class SpeakerDetail extends React.Component {
     const {name, bio, photoUrl, sessions} = speaker;
 
     if (error) {
-      return <p>{error.message}</p>;
+      return null;
     }
 
     if (isLoading) {
