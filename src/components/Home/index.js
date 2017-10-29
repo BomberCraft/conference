@@ -48,6 +48,11 @@ export class Home extends React.Component {
               onClick={() => history.push(`/speakers`)}>
               <ListItemText primary='Liste des présentateurs'/>
             </ListItem>
+            <ListItem
+              button
+              onClick={() => history.push(`/partners`)}>
+              <ListItemText primary='Liste des sponsors'/>
+            </ListItem>
           </List>
         </CardContent>
       </Card>
