@@ -4,7 +4,7 @@ import {Route, Switch} from 'react-router';
 import Card, {CardHeader, CardContent} from 'material-ui/Card';
 import Input from 'material-ui/Input';
 import {withStyles} from 'material-ui/styles';
-import {getSession, getSessions} from './helpers';
+import {getSessions, getSession, getSchedule} from './helpers';
 import SessionList from './SessionList';
 import SessionDetail from './SessionDetail';
 import SessionNote from './SessionNote';
@@ -76,8 +76,9 @@ export class SessionContainer extends React.Component {
         <Route path='/sessions/:id' render={props => {
           const id = +props.match.params.id;
           const session = getSession(id, entities);
+          const schedule = getSchedule(id, entities);
 
-          return <SessionDetail session={session}/>;
+          return <SessionDetail session={session} schedule={schedule}/>;
         }}/>
       </Switch>
     )

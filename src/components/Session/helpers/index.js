@@ -1,6 +1,6 @@
 import {denormalize} from 'normalizr';
 import {sessionSchema} from '../schema';
-import { getDB, executeQuery } from '../../../utils/db';
+import {getDB, executeQuery} from '../../../utils/db';
 
 /**
  * Get session
@@ -21,6 +21,30 @@ export const getSession = (id, entities) => {
  */
 export const getSessions = (entities) => {
   return Object.values(entities.sessions);
+};
+
+/**
+ * Get schedule
+ *
+ * @param id
+ * @param entities
+ * @returns {*}
+ */
+export const getSchedule = (id, entities) => {
+  const {schedules} = entities;
+
+  const flatSchedules = [];
+  schedules.forEach(day => day.timeslots.forEach(timeslot => timeslot.sessions.forEach(session => {
+    const id = session[0];
+    flatSchedules.push({
+      date: day.date,
+      startTime: timeslot.startTime,
+      endTime: timeslot.endTime,
+      sessionId: id
+    });
+  })));
+
+  return flatSchedules.find(schedule => schedule.sessionId === id);
 };
 
 /**

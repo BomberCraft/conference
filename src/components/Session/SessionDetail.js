@@ -22,8 +22,9 @@ const styles = {
   },
 };
 
-const SessionNote = props => {
-  const {classes, history, location, session} = props;
+const SessionDetail = props => {
+  const {classes, history, location} = props;
+  const {session, schedule} = props;
   const {title, description, speakers, complexity} = session;
 
   const markedDescription = description && marked(description);
@@ -39,6 +40,16 @@ const SessionNote = props => {
             <WhatshotIcon color={Difficulty.checkDifficulty(complexity, Difficulty.BEGINNER)}/>
             <WhatshotIcon color={Difficulty.checkDifficulty(complexity, Difficulty.INTERMEDIATE)}/>
             <WhatshotIcon color={Difficulty.checkDifficulty(complexity, Difficulty.EXPERT)}/>
+          </div>
+        )}
+        {schedule && (
+          <div>
+            {`${schedule.date} / ${schedule.startTime} - ${schedule.endTime}`}
+          </div>
+        )}
+        {session.track && (
+          <div>
+            {`Salle ${session.track.title}`}
           </div>
         )}
         <Typography component="div">
@@ -69,4 +80,4 @@ const composed = compose(
   withStyles(styles),
 );
 
-export default composed(SessionNote);
+export default composed(SessionDetail);
