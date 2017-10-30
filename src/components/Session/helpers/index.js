@@ -47,6 +47,41 @@ export const getSchedule = (id, entities) => {
   return flatSchedules.find(schedule => schedule.sessionId === id);
 };
 
+export const findSessionInCalendar = (session, schedule) => new Promise((resolve, reject) => {
+  const calendar = window.plugins.calendar;
+  const title = session.title;
+  const eventLocation = session.track ? session.track.title : null;
+  const notes = null;
+  const startHours = schedule.startTime.split(':');
+  const startDate = new Date(schedule.date);
+  startDate.setHours(startHours[0], startHours[1]);
+  const endHours = schedule.endTime.split(':');
+  const endDate = new Date(schedule.date);
+  endDate.setHours(endHours[0], endHours[1]);
+
+  calendar.findEvent(title, eventLocation, notes, startDate, endDate, message => resolve(message), message => reject(message));
+});
+
+export const openCalendar = (date) => new Promise((resolve, reject) => {
+  const calendar = window.plugins.calendar;
+  calendar.openCalendar(date, message => resolve(message), message => reject(message));
+});
+
+export const addSessionToCalendar = (session, schedule) => new Promise((resolve, reject) => {
+  const calendar = window.plugins.calendar;
+  const title = session.title;
+  const eventLocation = session.track ? session.track.title : null;
+  const notes = null;
+  const startHours = schedule.startTime.split(':');
+  const startDate = new Date(schedule.date);
+  startDate.setHours(startHours[0], startHours[1]);
+  const endHours = schedule.endTime.split(':');
+  const endDate = new Date(schedule.date);
+  endDate.setHours(endHours[0], endHours[1]);
+
+  calendar.createEventInteractively(title, eventLocation, notes, startDate, endDate, message => resolve(message), message => reject(message));
+});
+
 /**
  * Load note content
  *
